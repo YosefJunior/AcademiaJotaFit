@@ -4,7 +4,7 @@
 
 ## Onde paramos
 
-Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com merge na `main`). Próximo passo: criar os métodos de alteração do `Aluno` numa branch nova.
+Branch `feature/aluno-metodos-alteracao` criada a partir da `main`, ainda sem alterações. Próximo passo: escrever o método `AlterarNome` no `Aluno` (`public void`, depois do construtor) e pedir **revisar**.
 
 ## O que já foi feito
 
@@ -14,7 +14,7 @@ Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com m
 - Modelo de domínio definido (ver `CLAUDE.md`).
 - `CLAUDE.md`, `HANDOFF.md` e skills de estudo em `.claude/skills/`.
 - Entidade `Aluno` criada (PR #1 na `main`).
-- Histórico do Git reescrito para remover dados pessoais de uma versão antiga do `HANDOFF.md`.
+- Histórico do Git reescrito para remover dados pessoais de uma versão antiga do `HANDOFF.md`; mensagens dos commits padronizadas; repositório recriado no GitHub e `main` enviada.
 - Corrigido bug de recursão infinita no cálculo da `Idade` (usava a propriedade `Idade` em vez da variável local).
 - Validações no `set` de cada propriedade do `Aluno`:
   - `NomeCompleto`, `Email`, `Cpf`: não podem ser vazios ou só espaços; espaços das pontas removidos.
@@ -36,6 +36,9 @@ Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com m
 - Teto do peso em 600 kg: serve para pegar erro de digitação sem recusar pessoas reais.
 - Data Annotations (`[Required]`, `[Range]`) ficam nos **DTOs**, não na entidade: elas só funcionam quando o ASP.NET as lê.
 - Aluno: `Id`, `Cpf` e `DataNascimento` não mudam; nome e e-mail com métodos separados; altura e peso juntos em `AtualizarMedidas`.
+- Métodos de alteração só atribuem à propriedade: a validação já está no `set`, então não se repete o `if`.
+- Commits de correção ficam no histórico: mostram a evolução e são prática normal; só se reescreve histórico por motivo real (ex.: dados pessoais).
+- Nomes de branch: `feature/` ou `fix/` + entidade + assunto, minúsculo, com hífen e sem acento.
 
 ## Conceitos aprendidos
 
@@ -53,12 +56,16 @@ Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com m
 - Constantes (`const`) e números mágicos; interpolação de string (`$"...{x}..."`).
 - Mensagem de erro deve descrever exatamente o que o código verifica.
 - `.gitignore` só afeta arquivos que o Git ainda não acompanha.
+- Reescrever histórico muda os IDs dos commits; publicar exige force push e novo clone nos outros computadores.
+- `get` lê o valor; `set` grava. `private set` impede gravar de fora da classe, mas métodos da própria classe podem.
+- Assinatura de método: visibilidade (`public`), retorno (`void` = não devolve nada), nome em verbo no imperativo.
+- Data Annotations são etiquetas: só funcionam quando alguém as lê (ASP.NET, EF Core).
 
 ## Próximos passos
 
-1. Criar uma branch nova a partir da `main` atualizada.
-2. Criar no `Aluno` os métodos de alteração: alterar nome, alterar e-mail e `AtualizarMedidas`. Depois, **revisar**.
-3. Abrir PR da branch para a `main`.
+1. Escrever `AlterarNome` no `Aluno` e pedir **revisar**.
+2. Escrever `AlterarEmail` e `AtualizarMedidas` no mesmo modelo; **revisar**, commit e push da branch.
+3. Abrir PR de `feature/aluno-metodos-alteracao` para a `main`.
 4. Instalar o EF Core, criar o `DbContext`, configurar a connection string e rodar a primeira migration.
 5. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
@@ -70,3 +77,4 @@ Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com m
 ## Rotina com dois computadores
 
 - Ao sair: `add` + `commit` + `push`. Ao chegar: `git pull` antes de mexer.
+- **Pendente:** no outro computador, apagar a pasta do projeto e fazer `git clone` novo (o histórico foi reescrito; não dar `push` de lá antes disso).
