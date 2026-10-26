@@ -78,5 +78,7 @@ AcademiaJotaFit/
 - Dinheiro sempre em `decimal`.
 - CPF como `string`.
 - Valores que podem ser derivados (idade, status) são calculados, não guardados.
+- Ordem dentro da classe: constantes (`const`) no topo → propriedades → construtor → métodos.
+- Limites de validação em constantes nomeadas (sem números mágicos), usadas no `if` e na mensagem.
 - Mensagens de commit em português, no imperativo (ex.: "Cria entidade Aluno").
 - Git: e-mail **noreply** do GitHub configurado no `user.email`.
