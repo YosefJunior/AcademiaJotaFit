@@ -12,7 +12,7 @@ public class Aluno
             var hoje = DateOnly.FromDateTime(DateTime.Today);
             var idade = hoje.Year - DataNascimento.Year;
 
-            if (DataNascimento.AddYears(Idade) > hoje)
+            if (DataNascimento.AddYears(idade) > hoje)
                 idade--;
             return idade;
         }
