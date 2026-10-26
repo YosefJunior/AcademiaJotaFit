@@ -4,49 +4,69 @@
 
 ## Onde paramos
 
-Recomeçando a partir do commit inicial. Próximo passo: refazer a limpeza do WeatherForecast, recriar as pastas e escrever a classe **`Aluno`** já com as correções da primeira revisão.
-
-## Correções da primeira revisão da classe Aluno (aplicar ao refazer)
-
-- Classe **`public`** (sem modificador ela é `internal` e vai dar erro de acessibilidade inconsistente nos controllers).
-- **Sem `id` no construtor**: o banco gera o Id.
-- Parâmetros em **camelCase** (`nomeCompleto`, `dataNascimento`).
-- Propriedade **`Cpf`** em vez de `CPF` (siglas de 3+ letras só com a inicial maiúscula).
-- Para pensar: encapsulamento. Quais propriedades não deveriam ter `set` público?
-
-## Git em dois computadores
-
-- Regra: ao sair de um computador, `add` + `commit` + `push`; ao chegar no outro, `git pull` antes de mexer.
+Todas as propriedades da entidade `Aluno` estão validadas no `set` (PR #2 com merge na `main`). Próximo passo: criar os métodos de alteração do `Aluno` numa branch nova.
 
 ## O que já foi feito
 
-- Solution `.slnx` e projeto `AcademiaJotaFit.Api` criados por linha de comando (.NET 10, com controllers).
-- `.gitignore` criado; repositório publicado no GitHub (`main`).
-- Erro GH007 (e-mail privado) resolvido com o e-mail noreply do GitHub.
-- Exemplo `WeatherForecast` removido.
-- Pastas criadas: `Data`, `DTOs`, `Models`, `Services` (o Visual Studio adicionou `<Folder Include>` no `.csproj` para mantê-las visíveis).
-- Git Bash configurado como terminal padrão do Visual Studio.
-- Sugestões de IA do Visual Studio em modo **Manual** (Text Editor → Inline Suggestions → Invocation); "C# suggestions" e "Inline diff views" do IntelliCode desmarcados.
+- Solution `.slnx` e projeto `AcademiaJotaFit.Api` (.NET 10, com controllers); exemplo `WeatherForecast` removido.
+- Pastas `Controllers`, `Data`, `DTOs`, `Models`, `Services` criadas.
+- Repositório no GitHub com `.gitignore`; commits com e-mail noreply do GitHub.
 - Modelo de domínio definido (ver `CLAUDE.md`).
-- `CLAUDE.md`, `HANDOFF.md` e skills de estudo em `.claude/skills/` criados (explicar, dica, revisar, exercicio, quiz, salvar).
+- `CLAUDE.md`, `HANDOFF.md` e skills de estudo em `.claude/skills/`.
+- Entidade `Aluno` criada (PR #1 na `main`).
+- Histórico do Git reescrito para remover dados pessoais de uma versão antiga do `HANDOFF.md`.
+- Corrigido bug de recursão infinita no cálculo da `Idade` (usava a propriedade `Idade` em vez da variável local).
+- Validações no `set` de cada propriedade do `Aluno`:
+  - `NomeCompleto`, `Email`, `Cpf`: não podem ser vazios ou só espaços; espaços das pontas removidos.
+  - `Email` guardado em minúsculas.
+  - `DataNascimento`: não pode estar no futuro.
+  - `Altura` (0–300 cm) e `Peso` (0–600 kg), com limites em constantes.
 
 ## Decisões tomadas
 
-- Benefícios do plano como propriedades do próprio Plano (opção A).
-- Matrícula guarda data de cancelamento (`DateOnly?`); status é calculado.
-- Renovação = nova matrícula.
+- Benefícios do plano como propriedades do Plano (opção A): simples para o estudo.
+- Matrícula guarda data de cancelamento (`DateOnly?`); status é calculado: evita dado duplicado.
+- Renovação = nova matrícula: mantém o histórico.
 - Ordem de desenvolvimento: Aluno → Plano → Matrícula, uma por vez de ponta a ponta.
-- Entidades ricas (estilo DDD): todas as propriedades com `private set`; mudanças só por métodos que validam (guard clauses).
-- Aluno: `Id`, `Cpf` e `DataNascimento` não mudam (sem método); nome e e-mail com métodos **separados** (mudam em momentos diferentes); altura e peso juntos em `AtualizarMedidas` (medidos na mesma avaliação).
+- Entidades ricas: todas as propriedades com `private set`; mudanças só por métodos públicos.
+- Validação **dentro do `set`** (C# 14, palavra-chave `field`): a regra fica num lugar só e o construtor e os métodos passam por ela automaticamente.
+- Espaços das pontas são **limpos** (`Trim`), não barrados: não pune erro de digitação e mantém a busca funcionando.
+- E-mail em minúsculas com `ToLowerInvariant`: e-mail não diferencia maiúsculas; a versão Invariant não depende do idioma do computador.
+- Nome guardado como digitado: não existe regra automática de maiúsculas que acerte todos os nomes.
+- Teto do peso em 600 kg: serve para pegar erro de digitação sem recusar pessoas reais.
+- Data Annotations (`[Required]`, `[Range]`) ficam nos **DTOs**, não na entidade: elas só funcionam quando o ASP.NET as lê.
+- Aluno: `Id`, `Cpf` e `DataNascimento` não mudam; nome e e-mail com métodos separados; altura e peso juntos em `AtualizarMedidas`.
+
+## Conceitos aprendidos
+
+- Recursão infinita: propriedade que chama a si mesma → `StackOverflowException`.
+- Guard clause: `if` no início que barra valor inválido com `throw`.
+- Exceções: `ArgumentException` (valor inválido), `ArgumentOutOfRangeException` (fora da faixa), `ArgumentNullException`.
+- Sobrecargas: `ArgumentOutOfRangeException(string)` recebe o **nome do parâmetro**, não a mensagem.
+- `nameof(...)`: pega o nome de algo do código como texto.
+- No `set`: `value` é o valor que chega; `field` é onde guardar.
+- Auto-property vs. propriedade com corpo.
+- Método estático (`string.IsNullOrWhiteSpace(texto)`) vs. método de instância (`texto.Trim()`).
+- Strings são imutáveis: métodos devolvem um texto novo, que precisa ser guardado.
+- Tipos de valor (`int`, `double`, `DateOnly`) nunca são `null`; métodos de `string` não servem para eles.
+- Escopo: variável criada dentro de `{ }` só existe ali.
+- Constantes (`const`) e números mágicos; interpolação de string (`$"...{x}..."`).
+- Mensagem de erro deve descrever exatamente o que o código verifica.
+- `.gitignore` só afeta arquivos que o Git ainda não acompanha.
 
 ## Próximos passos
 
-1. Corrigir o autor do commit inicial e refazer a limpeza do projeto.
-2. Escrever a classe `Aluno` com as correções acima e revisar (comando **revisar**).
-3. Commit: "Cria entidade Aluno".
+1. Criar uma branch nova a partir da `main` atualizada.
+2. Criar no `Aluno` os métodos de alteração: alterar nome, alterar e-mail e `AtualizarMedidas`. Depois, **revisar**.
+3. Abrir PR da branch para a `main`.
 4. Instalar o EF Core, criar o `DbContext`, configurar a connection string e rodar a primeira migration.
-5. Seguir com DTOs, Service, Controller e testes no Postman para Aluno.
+5. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
-- Nenhuma no momento.
+- CPF com e sem pontuação (`123.456.789-00` × `12345678900`): onde normalizar para a regra "CPF único" funcionar?
+- Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
+
+## Rotina com dois computadores
+
+- Ao sair: `add` + `commit` + `push`. Ao chegar: `git pull` antes de mexer.
