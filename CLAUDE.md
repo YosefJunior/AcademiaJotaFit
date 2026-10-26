@@ -69,6 +69,7 @@ AcademiaJotaFit/
 - Aluno não pode ter duas matrículas ativas ao mesmo tempo.
 - Renovação gera uma **nova** matrícula (mantém histórico).
 - Regras que consultam o banco ficam no **Service**.
+- **Entidades ricas (estilo DDD):** a entidade valida os próprios dados (invariantes) no construtor e nos métodos de alteração, e lança exceção se forem inválidos. Validação de formato da entrada fica nos DTOs.
 
 **Para o futuro:** entidade Avaliação Física (histórico de altura/peso), controle das doses retiradas por dia, Benefício como entidade separada.
 
