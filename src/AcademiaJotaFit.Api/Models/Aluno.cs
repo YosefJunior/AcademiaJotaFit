@@ -3,7 +3,7 @@
 public class Aluno
 {
     public int Id { get; private set; }
-    public string NomeCompleto { get; set; }
+    public string NomeCompleto { get; private set; }
     public DateOnly DataNascimento { get; private set; }
     public int Idade
     {
@@ -17,10 +17,10 @@ public class Aluno
             return idade;
         }
     }
-    public string Email { get; set; }
+    public string Email { get; private set; }
     public string Cpf { get; private set; }
-    public int Altura { get; set; } // Altura em centímetros Ex: 175cm
-    public double Peso { get; set; } // Peso em quilogramas Ex: 80kg
+    public int Altura { get; private set; } // Altura em centímetros Ex: 175cm
+    public double Peso { get; private set; } // Peso em quilogramas Ex: 80kg
 
     public Aluno(string nomeCompleto, DateOnly dataNascimento, string email, string cpf, int altura, double peso)
     {

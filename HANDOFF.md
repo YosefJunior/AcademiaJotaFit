@@ -36,6 +36,8 @@ Recomeçando a partir do commit inicial. Próximo passo: refazer a limpeza do We
 - Matrícula guarda data de cancelamento (`DateOnly?`); status é calculado.
 - Renovação = nova matrícula.
 - Ordem de desenvolvimento: Aluno → Plano → Matrícula, uma por vez de ponta a ponta.
+- Entidades ricas (estilo DDD): todas as propriedades com `private set`; mudanças só por métodos que validam (guard clauses).
+- Aluno: `Id`, `Cpf` e `DataNascimento` não mudam (sem método); nome e e-mail com métodos **separados** (mudam em momentos diferentes); altura e peso juntos em `AtualizarMedidas` (medidos na mesma avaliação).
 
 ## Próximos passos
 
