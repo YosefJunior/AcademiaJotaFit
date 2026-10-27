@@ -75,10 +75,7 @@ public class Aluno
         get;
         private set
         {
-            if (value <= AlturaMinima || value >= AlturaMaxima)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Altura), $"O campo 'Altura' deve ser superior a {AlturaMinima}cm e inferior a {AlturaMaxima}cm");
-            }
+            ValidarAltura(value);
             field = value;
         }
     }
@@ -87,10 +84,7 @@ public class Aluno
         get;
         private set
         {
-            if (value <= PesoMinimo || value >= PesoMaximo)
-            {
-                throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ser superior a {PesoMinimo}kg e inferior a {PesoMaximo}kg");
-            }
+            ValidarPeso(value);
             field = value;
         }
     }
@@ -102,5 +96,40 @@ public class Aluno
         Cpf = cpf;
         Altura = altura;
         Peso = peso;
+    }
+
+    public void AtualizarNome(string nomeCompleto)
+    {
+        NomeCompleto = nomeCompleto;
+    }
+
+    public void AtualizarEmail(string email)
+    {
+        Email = email;
+    }
+
+    public void AtualizarMedidas(int altura, double peso)
+    {
+        ValidarAltura(altura);
+        ValidarPeso(peso);
+
+        Altura = altura;
+        Peso = peso;
+    }
+
+    private static void ValidarAltura(int altura)
+    {
+        if (altura <= AlturaMinima || altura >= AlturaMaxima)
+        {
+            throw new ArgumentOutOfRangeException(nameof(Altura), $"O campo 'Altura' deve ser superior a {AlturaMinima}cm e inferior a {AlturaMaxima}cm");
+        }
+    }
+
+    private static void ValidarPeso(double peso)
+    {
+        if (peso <= PesoMinimo || peso >= PesoMaximo)
+        {
+            throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ser superior a {PesoMinimo}kg e inferior a {PesoMaximo}kg");
+        }
     }
 }
