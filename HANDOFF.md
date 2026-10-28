@@ -4,7 +4,7 @@
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados (commit "Adiciona pacotes do EF Core"). Aviso de pacote vulnerável ignorado de forma consciente (ver Decisões). Arquivo `Data/JotaFitContext.cs` criado, ainda **não commitado** e **em rascunho**: os dois `using` e o namespace estão certos, mas o corpo é uma cópia do exemplo Veiculo/Carro (classe `JotaFitContext` sem herança e uma classe `Aluno` herdando dela). Precisa ser reescrito.
+Branch `feature/aluno-ef-core`. O `JotaFitContext` está pronto e registrado no `Program.cs`, e a connection string está no `appsettings.json` (tudo commitado). Uma primeira migration `CriaTabelaAlunos` foi gerada, lida e **descartada** com `migrations remove`, porque o CPF não era único e os textos ficaram `nvarchar(max)`. Decidido: CPF guardado **só com números**, estratégia B (ver Decisões). Parou no meio de uma pergunta: a ordem dos 5 passos do `set` do `Cpf` (ver Próximos passos).
 
 ## O que já foi feito
 
@@ -28,6 +28,10 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - Instância `MSSQLLocalDB` do LocalDB criada e rodando (SQL Server 17.0 / 2025), com `sqllocaldb start`.
 - Pacotes `Microsoft.EntityFrameworkCore.SqlServer` e `.Design` (10.0.14) e ferramenta global `dotnet-ef` (10.0.14) instalados.
 - Aviso de vulnerabilidade do `Pkcs` analisado e registrado como decisão (commit "Registra decisão sobre aviso de vulnerabilidade").
+- `Data/JotaFitContext.cs`: herda de `DbContext`, tem `DbSet<Aluno> Alunos` e um construtor que recebe `DbContextOptions<JotaFitContext>` e repassa com `: base(options)` (commit "Cria JotaFitContext").
+- `appsettings.json`: grupo `ConnectionStrings` com a conexão `JotaFit` (LocalDB, banco `AcademiaJotaFit`, autenticação do Windows) (commit "Configura conexão com o banco no appsettings").
+- `Program.cs`: lê a connection string com `GetConnectionString("JotaFit")` e registra o contexto com `AddDbContext` + `UseSqlServer` numa lambda (commit "Registra JotaFitContext no Program.cs").
+- Primeira migration gerada, lida e descartada (nada foi aplicado no banco; o banco ainda não existe).
 
 ## Decisões tomadas
 
@@ -58,6 +62,15 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - Por enquanto, um único `DbSet` (o de `Aluno`): `Plano` e `Matricula` ainda não existem, e cada entidade ganha o seu `DbSet` quando for criada.
 - A propriedade `DbSet` usa `get` e `set` (convenção): o EF Core preenche a propriedade ao criar o contexto.
 - Opções do banco chegam pelo construtor (`DbContextOptions<JotaFitContext>`) e são repassadas com `: base(...)`: quem decide o banco é o `Program.cs`, não a classe.
+- Um único `JotaFitContext` para o projeto inteiro: cada entidade nova ganha só uma linha `DbSet` nele. Um banco, um gerente; as entidades se relacionam e são salvas juntas.
+- Nada de código comentado nos commits (as linhas `Planos` e `Matriculas` entram quando as entidades existirem).
+- Connection string chamada `JotaFit`; leitura numa variável separada antes do `AddDbContext`: cada linha faz uma coisa.
+- Migration só é descartada (`migrations remove`) se ainda não foi aplicada nem compartilhada; depois disso, corrige-se com uma migration nova.
+- CPF guardado **só com números** (11 caracteres): pontuado e sem pontuação viram o mesmo valor, e o índice único pega a duplicata. A formatação é só para exibição.
+- A limpeza do CPF fica no `set` da entidade, não no DTO: a entidade está em todos os caminhos.
+- Estratégia B para limpar o CPF: remover só a formatação conhecida (ponto, traço, espaço) e depois exigir só números. A estratégia A (remover tudo que não é número) aceitaria letras digitadas por engano em silêncio.
+- Tamanho do CPF numa constante só (ex.: `TamanhoCpf`), porque o mínimo é igual ao máximo; a mensagem fica "exatamente 11 dígitos".
+- No banco, o CPF terá índice **único**, além da checagem no Service: é a última linha de defesa contra cadastros simultâneos.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -104,19 +117,36 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - Herança com repasse: `class Filho : Pai` e `public Filho(x) : base(x)`, em que o construtor do filho entrega o valor ao construtor do pai.
 - Tipo genérico: o que vai entre `< >` diz o que tem dentro (`List<string>`, `DbSet<Aluno>`).
 - Construtor do EF Core: o EF consegue usar o construtor com parâmetros quando os nomes dos parâmetros batem com os das propriedades (`nomeCompleto` ↔ `NomeCompleto`).
+- Montar uma classe: descrever em português antes (é um? tem? recebe para nascer? faz?) e escrever na ordem do arquivo: `using` → `namespace` → classe → constantes → propriedades → construtor → métodos.
+- Reconhecer pelo formato: propriedade `public TIPO Nome { get; set; }` (sem parênteses); construtor `public NomeDaClasse(TIPO param)` (sem retorno); método `public RETORNO Verbo(TIPO param)`.
+- Parâmetro = tipo + nome; dentro do `base( )` vai o nome do parâmetro (o valor), não o nome de uma classe.
+- Método genérico: `Nome<Tipo>()`, na ordem nome → `< >` → `( )`. Os parênteses são o "execute agora" e vêm por último.
+- Pasta/namespace (`Data`) organiza arquivos; `builder.Services` é a lista de serviços. Todo registro é `builder.Services.Add...`.
+- `Program.cs`: antes do `builder.Build()` monta-se o "cardápio" de serviços; depois, o caminho das requisições.
+- Injeção de dependência: quem precisa de um objeto **pede** ao ASP.NET em vez de criar; só é entregue o que foi registrado.
+- JSON: pares `"chave": valor`, separados por vírgula (o último sem vírgula); `\` vira `\\`.
+- Connection string: pares `Chave=valor;` com `Server`, `Database` e `Trusted_Connection`; `(localdb)` é palavra fixa. O grupo precisa se chamar exatamente `ConnectionStrings`.
+- `builder.Configuration.GetConnectionString("Nome")` lê o valor final das camadas de configuração.
+- Lambda: mini-método sem nome, `parametro => o que fazer`; é um "bilhete de instruções" que o ASP.NET segue quando precisar.
+- Migration = "commit do banco": `migrations add` escreve a receita (não mexe no banco); `database update` aplica. `Up` aplica, `Down` desfaz. Gera três arquivos (receita, `.Designer`, `ModelSnapshot`); o número no nome é data e hora.
+- Convenções do EF: propriedade `Id` vira chave primária com `Identity`; propriedade sem `set` (ex.: `Idade`) não vira coluna; `double` → `float`, `DateOnly` → `date`; `string` sem limite → `nvarchar(max)`.
+- `nvarchar(max)` não aceita índice único; regra de negócio (CPF único) o EF não adivinha, precisa ser configurada.
+- Mensagem de commit no imperativo: completa a frase "este commit vai...".
 
 ## Próximos passos
 
-1. Reescrever o corpo de `Data/JotaFitContext.cs` sem copiar o exemplo. Mapeamento: `Veiculo` → `DbContext`, `Carro` → `JotaFitContext`, `string placa` → `DbContextOptions<JotaFitContext>`. Depois, adicionar a propriedade `DbSet<Aluno>` no plural, com `get; set;`. Apagar a classe `Aluno` que ficou no arquivo, porque a entidade já existe em `Models/`. Pedir **revisar**.
-2. Configurar a connection string no `appsettings.json` e registrar o contexto no `Program.cs`.
-3. Rodar a primeira migration e conferir a tabela de alunos no banco.
-4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+1. Responder a pergunta pendente: ordenar os 5 passos do `set` do `Cpf` e explicar por que o (d) vem antes do (e) e do (b). Passos fora de ordem: (a) guardar no `field`; (b) conferir exatamente 11 caracteres; (c) conferir que não está vazio (já existe); (d) remover pontos, traços e espaços; (e) conferir que sobrou só número.
+2. Escrever o novo `set` do `Cpf` no `Aluno.cs` (estratégia B, constante do tamanho) e testar mentalmente com `"123.456.789-00"`, `"  12345678900 "`, `"123.456"` e `"abc"`. Commit.
+3. Configurar o banco no `JotaFitContext` (lugar novo: `OnModelCreating`): tamanho máximo do CPF, do nome e do e-mail, e índice único no CPF. Commit.
+4. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
+5. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
-- CPF com e sem pontuação (`123.456.789-00` × `12345678900`): onde normalizar para a regra "CPF único" funcionar?
+- Validar os dígitos verificadores do CPF (CPF "matematicamente válido"): fica para depois.
+- Que tamanho máximo dar ao nome e ao e-mail (decidir no passo 3).
 - Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
-- Como o EF Core cria um `Aluno` lendo do banco, se a classe só tem construtor com parâmetros e `private set`? Resposta provável: o EF usa o construtor, porque os nomes dos parâmetros batem com os das propriedades. Confirmar na migration ou na primeira leitura.
+- Como o EF Core cria um `Aluno` lendo do banco? A migration não reclamou do construtor; confirmar de vez na primeira leitura do banco (Service/Postman).
 
 ## Rotina com dois computadores
 
