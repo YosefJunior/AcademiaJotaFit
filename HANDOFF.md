@@ -4,7 +4,7 @@
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados (commit "Adiciona pacotes do EF Core"). Aviso de pacote vulnerável ignorado de forma consciente (ver Decisões). Próximo passo: criar o `DbContext` em `Data/`.
+Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados (commit "Adiciona pacotes do EF Core"). Aviso de pacote vulnerável ignorado de forma consciente (ver Decisões). Arquivo `Data/JotaFitContext.cs` criado, ainda **não commitado** e **em rascunho**: os dois `using` e o namespace estão certos, mas o corpo é uma cópia do exemplo Veiculo/Carro (classe `JotaFitContext` sem herança e uma classe `Aluno` herdando dela). Precisa ser reescrito.
 
 ## O que já foi feito
 
@@ -27,6 +27,7 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - PR #1 da mesma branch levou só um commit de handoff (ficou no histórico; não vale reescrever).
 - Instância `MSSQLLocalDB` do LocalDB criada e rodando (SQL Server 17.0 / 2025), com `sqllocaldb start`.
 - Pacotes `Microsoft.EntityFrameworkCore.SqlServer` e `.Design` (10.0.14) e ferramenta global `dotnet-ef` (10.0.14) instalados.
+- Aviso de vulnerabilidade do `Pkcs` analisado e registrado como decisão (commit "Registra decisão sobre aviso de vulnerabilidade").
 
 ## Decisões tomadas
 
@@ -53,6 +54,10 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - Linhas `<Folder Include>` que o Visual Studio põe no `.csproj` para pastas vazias são descartadas (`git restore`).
 - Banco: SQL Server/LocalDB. SQLite foi considerado e descartado: não tem `decimal` (não ordena nem compara dinheiro em consultas) e lida mal com acentos na busca.
 - Connection string do LocalDB usa autenticação do Windows (sem senha), então pode ficar no `appsettings.json`. Segredos de verdade iriam para User Secrets / variáveis de ambiente.
+- Contexto do EF Core: classe `JotaFitContext`, em `Data/`, namespace `AcademiaJotaFit.Api.Data`. Não pode se chamar `DbContext`, porque colidiria com o nome da classe base.
+- Por enquanto, um único `DbSet` (o de `Aluno`): `Plano` e `Matricula` ainda não existem, e cada entidade ganha o seu `DbSet` quando for criada.
+- A propriedade `DbSet` usa `get` e `set` (convenção): o EF Core preenche a propriedade ao criar o contexto.
+- Opções do banco chegam pelo construtor (`DbContextOptions<JotaFitContext>`) e são repassadas com `: base(...)`: quem decide o banco é o `Program.cs`, não a classe.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -94,11 +99,16 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - `PrivateAssets` = pacote só de desenvolvimento, não repassado adiante.
 - Dependência transitiva: pacote que vem pela corrente; o NuGet escolhe a menor versão que atende o pedido.
 - Visual Studio esconde pastas vazias; botão "Mostrar Todos os Arquivos" (pode estar no "⋯").
+- `DbContext` = gerente da conexão (o "arquivo de aço"); entidade = o que é guardado (a "ficha"). O contexto não herda da entidade.
+- `DbSet<T>` = uma "gaveta"/tabela; nome no plural. Adicionar ou alterar dados é feito por métodos do `DbSet` (ex.: `Add`), não pelo `set` da propriedade. O `set` só troca a gaveta inteira.
+- Herança com repasse: `class Filho : Pai` e `public Filho(x) : base(x)`, em que o construtor do filho entrega o valor ao construtor do pai.
+- Tipo genérico: o que vai entre `< >` diz o que tem dentro (`List<string>`, `DbSet<Aluno>`).
+- Construtor do EF Core: o EF consegue usar o construtor com parâmetros quando os nomes dos parâmetros batem com os das propriedades (`nomeCompleto` ↔ `NomeCompleto`).
 
 ## Próximos passos
 
-1. Responder antes de criar o `DbContext`: quantos `DbSet` agora (e por que não três)? De qual classe herda? Pasta/namespace? Nome da classe?
-2. Criar o `DbContext` em `Data/`, configurar a connection string e registrar no `Program.cs`.
+1. Reescrever o corpo de `Data/JotaFitContext.cs` sem copiar o exemplo. Mapeamento: `Veiculo` → `DbContext`, `Carro` → `JotaFitContext`, `string placa` → `DbContextOptions<JotaFitContext>`. Depois, adicionar a propriedade `DbSet<Aluno>` no plural, com `get; set;`. Apagar a classe `Aluno` que ficou no arquivo, porque a entidade já existe em `Models/`. Pedir **revisar**.
+2. Configurar a connection string no `appsettings.json` e registrar o contexto no `Program.cs`.
 3. Rodar a primeira migration e conferir a tabela de alunos no banco.
 4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
@@ -106,7 +116,7 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 
 - CPF com e sem pontuação (`123.456.789-00` × `12345678900`): onde normalizar para a regra "CPF único" funcionar?
 - Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
-- Como o EF Core cria um `Aluno` lendo do banco, se a classe só tem construtor com parâmetros e `private set`?
+- Como o EF Core cria um `Aluno` lendo do banco, se a classe só tem construtor com parâmetros e `private set`? Resposta provável: o EF usa o construtor, porque os nomes dos parâmetros batem com os das propriedades. Confirmar na migration ou na primeira leitura.
 
 ## Rotina com dois computadores
 
