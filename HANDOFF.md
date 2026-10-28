@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 27/10/2026
+Última atualização: 28/10/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados (commit "Adiciona pacotes do EF Core"). Próximo passo: corrigir o aviso de pacote vulnerável e depois criar o `DbContext` em `Data/`.
+Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados (commit "Adiciona pacotes do EF Core"). Aviso de pacote vulnerável ignorado de forma consciente (ver Decisões). Próximo passo: criar o `DbContext` em `Data/`.
 
 ## O que já foi feito
 
@@ -53,6 +53,7 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 - Linhas `<Folder Include>` que o Visual Studio põe no `.csproj` para pastas vazias são descartadas (`git restore`).
 - Banco: SQL Server/LocalDB. SQLite foi considerado e descartado: não tem `decimal` (não ordena nem compara dinheiro em consultas) e lida mal com acentos na busca.
 - Connection string do LocalDB usa autenticação do Windows (sem senha), então pode ficar no `appsettings.json`. Segredos de verdade iriam para User Secrets / variáveis de ambiente.
+- Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
 
@@ -96,11 +97,10 @@ Branch `feature/aluno-ef-core`. LocalDB rodando e pacotes do EF Core instalados 
 
 ## Próximos passos
 
-1. Corrigir a vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer): achar a versão corrigida nos avisos `GHSA-846f-f764-76mx` (High) e `GHSA-2fmv-rv2c-59x7` (Moderate), declarar o pacote direto no `.csproj` e conferir com `dotnet list package --vulnerable --include-transitive`. Commit próprio.
-2. Responder antes de criar o `DbContext`: quantos `DbSet` agora (e por que não três)? De qual classe herda? Pasta/namespace? Nome da classe?
-3. Criar o `DbContext` em `Data/`, configurar a connection string e registrar no `Program.cs`.
-4. Rodar a primeira migration e conferir a tabela de alunos no banco.
-5. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+1. Responder antes de criar o `DbContext`: quantos `DbSet` agora (e por que não três)? De qual classe herda? Pasta/namespace? Nome da classe?
+2. Criar o `DbContext` em `Data/`, configurar a connection string e registrar no `Program.cs`.
+3. Rodar a primeira migration e conferir a tabela de alunos no banco.
+4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
