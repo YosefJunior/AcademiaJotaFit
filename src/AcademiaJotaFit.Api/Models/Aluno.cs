@@ -6,6 +6,7 @@ public class Aluno
     private const int AlturaMinima = 0;
     private const double PesoMaximo = 600;
     private const double PesoMinimo = 0;
+    private const int TamanhoCpf = 11;
 
     public int Id { get; private set; }
     public string NomeCompleto
@@ -67,7 +68,21 @@ public class Aluno
             {
                 throw new ArgumentException("O campo 'CPF' não pode ser vazio.");
             }
-            field = value.Trim();
+            var cpfLimpo = value.Replace(".", "").Replace("-", "").Replace(" ", "");
+
+            foreach (var caractere in cpfLimpo)
+            {
+                if (!char.IsDigit(caractere))
+                {
+                    throw new ArgumentException($"O campo 'CPF' não pode conter os seguintes caracteres: .,-");
+                }
+            }
+            if (cpfLimpo.Length != TamanhoCpf)
+            {
+                throw new ArgumentOutOfRangeException(nameof(cpfLimpo), $"O campo CPF precisa ter {TamanhoCpf} digitos.");
+            }
+
+            field = cpfLimpo;
         }
     }
     public int Altura // Altura em centímetros Ex: 175cm
