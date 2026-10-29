@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 28/10/2026
+Última atualização: 29/10/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. O `JotaFitContext` está pronto e registrado no `Program.cs`, e a connection string está no `appsettings.json` (tudo commitado). Uma primeira migration `CriaTabelaAlunos` foi gerada, lida e **descartada** com `migrations remove`, porque o CPF não era único e os textos ficaram `nvarchar(max)`. Decidido: CPF guardado **só com números**, estratégia B (ver Decisões). Parou no meio de uma pergunta: a ordem dos 5 passos do `set` do `Cpf` (ver Próximos passos).
+Branch `feature/aluno-ef-core`. O `set` do `Cpf` em `Models/Aluno.cs` foi reescrito com a estratégia B e **funciona**: compila e passa no teste de mesa (pontuado aceito; letras, tamanho errado e só formatação recusados). Falta só o acabamento de três detalhes (ver Próximos passos) e o commit.
 
 ## O que já foi feito
 
@@ -32,6 +32,7 @@ Branch `feature/aluno-ef-core`. O `JotaFitContext` está pronto e registrado no 
 - `appsettings.json`: grupo `ConnectionStrings` com a conexão `JotaFit` (LocalDB, banco `AcademiaJotaFit`, autenticação do Windows) (commit "Configura conexão com o banco no appsettings").
 - `Program.cs`: lê a connection string com `GetConnectionString("JotaFit")` e registra o contexto com `AddDbContext` + `UseSqlServer` numa lambda (commit "Registra JotaFitContext no Program.cs").
 - Primeira migration gerada, lida e descartada (nada foi aplicado no banco; o banco ainda não existe).
+- `set` do `Cpf` na ordem (c) não vazio → (d) remove ponto, traço e espaço numa variável `cpfLimpo` → (e) `foreach` que barra caractere que não é dígito → (b) tamanho diferente de `TamanhoCpf` → (a) grava o `cpfLimpo`. Constante `TamanhoCpf` (`int`) criada; `Trim` removido (o passo (d) já tira os espaços).
 
 ## Decisões tomadas
 
@@ -71,6 +72,11 @@ Branch `feature/aluno-ef-core`. O `JotaFitContext` está pronto e registrado no 
 - Estratégia B para limpar o CPF: remover só a formatação conhecida (ponto, traço, espaço) e depois exigir só números. A estratégia A (remover tudo que não é número) aceitaria letras digitadas por engano em silêncio.
 - Tamanho do CPF numa constante só (ex.: `TamanhoCpf`), porque o mínimo é igual ao máximo; a mensagem fica "exatamente 11 dígitos".
 - No banco, o CPF terá índice **único**, além da checagem no Service: é a última linha de defesa contra cadastros simultâneos.
+- Ordem do `set` do CPF: limpar (d) antes de conferir dígitos (e) e tamanho (b), senão um CPF pontuado (14 caracteres, com `.` e `-`) seria recusado; (e) antes de (b) para que `"abc"` receba a mensagem que explica o problema real.
+- Vírgula **não** é removida do CPF: não faz parte do formato; se aparecer, é erro de digitação e deve ser avisado (estratégia B).
+- Sem Regex por enquanto: os métodos de `string` e o `foreach` resolvem, e cada passo fica legível.
+- A entidade não escreve no console (`Console.Write`): ela não sabe se existe tela; testes reais virão pelo Postman.
+- `using` sugerido pelo Visual Studio que não se reconhece (ex.: `Microsoft.IdentityModel.Tokens`) é sinal de método errado: desconfiar e apagar.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -132,14 +138,25 @@ Branch `feature/aluno-ef-core`. O `JotaFitContext` está pronto e registrado no 
 - Convenções do EF: propriedade `Id` vira chave primária com `Identity`; propriedade sem `set` (ex.: `Idade`) não vira coluna; `double` → `float`, `DateOnly` → `date`; `string` sem limite → `nvarchar(max)`.
 - `nvarchar(max)` não aceita índice único; regra de negócio (CPF único) o EF não adivinha, precisa ser configurada.
 - Mensagem de commit no imperativo: completa a frase "este commit vai...".
+- Identificador só com dígitos (CPF, telefone, CEP) é `string`, não número: não se faz conta com ele, `int` não comporta 11 dígitos e zeros à esquerda sumiriam.
+- `if` só para **conferir** (pode reprovar → `throw`); passo que só **transforma** (ex.: `Replace`) não tem `if`.
+- `Replace(procurar, colocar)`: troca um pedaço do texto; com `""` remove. Recebe só 2 argumentos.
+- Encadear métodos: chamar o próximo método direto no resultado do anterior (`.Replace(...).Replace(...)`), porque cada um devolve uma `string`.
+- Nome de variável é substantivo (o que ela guarda, ex.: `cpfLimpo`); verbo é para método.
+- `string` é uma sequência de `char`; `char` é um caractere só, entre aspas simples (`'1'`).
+- `foreach (var x in sequencia)`: `x` é a **variável do laço**, recebe um item por volta e só existe dentro das chaves do laço.
+- `char.IsDigit(c)`: método estático do tipo `char` que responde se o caractere é de `'0'` a `'9'`.
+- Guard clause dentro do `foreach`: o `throw` para tudo no primeiro item inválido; se o laço terminar, todos passaram. Texto vazio = laço com 0 voltas (não reprova nada).
+- `texto.Length`: propriedade (sem parênteses) com o número de caracteres. `!=` = "diferente de".
+- Sinal de `if` errado: o valor que deveria ser testado não aparece na condição (a resposta nunca muda). Comparar a constante com ela mesma é sempre igual.
+- Lado que muda (dado de entrada) à esquerda, lado fixo (constante) à direita da comparação.
 
 ## Próximos passos
 
-1. Responder a pergunta pendente: ordenar os 5 passos do `set` do `Cpf` e explicar por que o (d) vem antes do (e) e do (b). Passos fora de ordem: (a) guardar no `field`; (b) conferir exatamente 11 caracteres; (c) conferir que não está vazio (já existe); (d) remover pontos, traços e espaços; (e) conferir que sobrou só número.
-2. Escrever o novo `set` do `Cpf` no `Aluno.cs` (estratégia B, constante do tamanho) e testar mentalmente com `"123.456.789-00"`, `"  12345678900 "`, `"123.456"` e `"abc"`. Commit.
-3. Configurar o banco no `JotaFitContext` (lugar novo: `OnModelCreating`): tamanho máximo do CPF, do nome e do e-mail, e índice único no CPF. Commit.
-4. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
-5. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+1. Acabamento do `set` do `Cpf` em `Aluno.cs`: (1) mensagem do `if` de dígitos deve descrever a regra real (depois de tirar a formatação, só números) e sem `$` desnecessário; (2) no `if` do tamanho, `nameof` da **propriedade** (não do `cpfLimpo`), `'CPF'` entre aspas simples e "dígitos" com acento; (3) linha em branco entre o fim do `foreach` e o `if` do tamanho. Compilar e commitar (sugestão: "Valida e limpa o CPF do aluno").
+2. Configurar o banco no `JotaFitContext` (lugar novo: `OnModelCreating`): tamanho máximo do CPF, do nome e do e-mail, e índice único no CPF. Commit.
+3. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
+4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
