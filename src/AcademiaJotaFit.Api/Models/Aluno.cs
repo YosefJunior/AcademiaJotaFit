@@ -6,7 +6,9 @@ public class Aluno
     private const int AlturaMinima = 0;
     private const double PesoMaximo = 600;
     private const double PesoMinimo = 0;
-    private const int TamanhoCpf = 11;
+    public const int TamanhoCpf = 11;
+    public const int TamanhoMaximoEmail = 254;
+    public const int TamanhoMaximoNome = 100;
 
     public int Id { get; private set; }
     public string NomeCompleto
