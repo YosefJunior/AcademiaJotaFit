@@ -74,12 +74,13 @@ public class Aluno
             {
                 if (!char.IsDigit(caractere))
                 {
-                    throw new ArgumentException($"O campo 'CPF' não pode conter os seguintes caracteres: .,-");
+                    throw new ArgumentException("O campo 'CPF' pode conter apenas caracteres numéricos.");
                 }
             }
+
             if (cpfLimpo.Length != TamanhoCpf)
             {
-                throw new ArgumentOutOfRangeException(nameof(cpfLimpo), $"O campo CPF precisa ter {TamanhoCpf} digitos.");
+                throw new ArgumentOutOfRangeException(nameof(Cpf), $"O campo 'CPF' precisa ter {TamanhoCpf} dígitos.");
             }
 
             field = cpfLimpo;
