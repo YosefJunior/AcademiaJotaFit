@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 29/10/2026
+Última atualização: 30/10/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. O `set` do `Cpf` em `Models/Aluno.cs` foi reescrito com a estratégia B e **funciona**: compila e passa no teste de mesa (pontuado aceito; letras, tamanho errado e só formatação recusados). Falta só o acabamento de três detalhes (ver Próximos passos) e o commit.
+Branch `feature/aluno-ef-core`. Começando os limites de tamanho do nome e do e-mail no `Aluno.cs`: as constantes `TamanhoCpf`, `TamanhoEmail` e `TamanhoNome` foram criadas/tornadas `public` (commit em andamento, já no GitHub). Ainda faltam ajustes nas constantes e os `if` nos `set` (ver Próximos passos).
 
 ## O que já foi feito
 
@@ -33,6 +33,8 @@ Branch `feature/aluno-ef-core`. O `set` do `Cpf` em `Models/Aluno.cs` foi reescr
 - `Program.cs`: lê a connection string com `GetConnectionString("JotaFit")` e registra o contexto com `AddDbContext` + `UseSqlServer` numa lambda (commit "Registra JotaFitContext no Program.cs").
 - Primeira migration gerada, lida e descartada (nada foi aplicado no banco; o banco ainda não existe).
 - `set` do `Cpf` na ordem (c) não vazio → (d) remove ponto, traço e espaço numa variável `cpfLimpo` → (e) `foreach` que barra caractere que não é dígito → (b) tamanho diferente de `TamanhoCpf` → (a) grava o `cpfLimpo`. Constante `TamanhoCpf` (`int`) criada; `Trim` removido (o passo (d) já tira os espaços).
+- Acabamento das mensagens do CPF (texto da regra real, `nameof(Cpf)`, aspas simples e acento) (commit "Ajusta mensagens de validação do CPF").
+- Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` virou `public`; `TamanhoEmail` (254) e `TamanhoNome` criadas como `public` (trabalho em andamento).
 
 ## Decisões tomadas
 
@@ -77,6 +79,12 @@ Branch `feature/aluno-ef-core`. O `set` do `Cpf` em `Models/Aluno.cs` foi reescr
 - Sem Regex por enquanto: os métodos de `string` e o `foreach` resolvem, e cada passo fica legível.
 - A entidade não escreve no console (`Console.Write`): ela não sabe se existe tela; testes reais virão pelo Postman.
 - `using` sugerido pelo Visual Studio que não se reconhece (ex.: `Microsoft.IdentityModel.Tokens`) é sinal de método errado: desconfiar e apagar.
+- Tamanho máximo: nome **100** (nomes brasileiros longos passam de 40; o teto pega erro, não recusa pessoa real) e e-mail **254** (limite da especificação RFC 5321).
+- O limite fica nos **dois lugares** com o mesmo valor: entidade (`if` no `set`, mensagem clara) e banco (`OnModelCreating`). Se o banco for menor que a entidade, o erro só aparece ao gravar, com mensagem técnica.
+- Só as constantes que o banco usa ficam `public` (CPF, nome, e-mail); altura e peso continuam `private`. O `JotaFitContext` as lê como `Aluno.TamanhoCpf`.
+- O tamanho é conferido **depois** do `Trim`: o que vai para o banco é o texto limpo.
+- Duplicata de CPF verificada no Service **e** barrada pelo índice único: o Service dá a mensagem clara (409); o índice garante nos cadastros simultâneos. Só o banco daria erro 500 com mensagem técnica.
+- De agora em diante, o aluno escreve as próprias mensagens de commit; o Claude só comenta.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -150,24 +158,33 @@ Branch `feature/aluno-ef-core`. O `set` do `Cpf` em `Models/Aluno.cs` foi reescr
 - `texto.Length`: propriedade (sem parênteses) com o número de caracteres. `!=` = "diferente de".
 - Sinal de `if` errado: o valor que deveria ser testado não aparece na condição (a resposta nunca muda). Comparar a constante com ela mesma é sempre igual.
 - Lado que muda (dado de entrada) à esquerda, lado fixo (constante) à direita da comparação.
+- Ordem das validações: limpar antes do tamanho (a formatação soma caracteres); conferir dígitos antes do tamanho (por causa da **mensagem**, não do resultado: o valor é recusado nas duas ordens).
+- `private` = só dentro da classe enxerga; outra classe (ex.: `JotaFitContext`) precisa de `public`.
+- `const` é automaticamente `static`: pertence à classe, não a cada objeto; acessa-se como `Tipo.Membro` (`Aluno.TamanhoCpf`, igual a `string.IsNullOrWhiteSpace`).
+- Erro de banco não tratado vira **500** (parece defeito do servidor); erro de regra tratado no Service vira resposta clara (ex.: **409 Conflict**).
+- Commit com várias linhas: título, linha em branco, corpo. No Git Bash, crase dentro de aspas duplas é executada como comando; usar `git commit` sem `-m` (abre o editor).
+- Branch `feature/` pode receber trabalho pela metade; `git stash` fica só no computador local, não viaja pelo GitHub.
+- SSH: par de chaves (pública no GitHub, privada só no computador); cada computador tem o seu. `Permission denied (publickey)` = chave daquele computador não cadastrada.
 
 ## Próximos passos
 
-1. Acabamento do `set` do `Cpf` em `Aluno.cs`: (1) mensagem do `if` de dígitos deve descrever a regra real (depois de tirar a formatação, só números) e sem `$` desnecessário; (2) no `if` do tamanho, `nameof` da **propriedade** (não do `cpfLimpo`), `'CPF'` entre aspas simples e "dígitos" com acento; (3) linha em branco entre o fim do `foreach` e o `if` do tamanho. Compilar e commitar (sugestão: "Valida e limpa o CPF do aluno").
-2. Configurar o banco no `JotaFitContext` (lugar novo: `OnModelCreating`): tamanho máximo do CPF, do nome e do e-mail, e índice único no CPF. Commit.
-3. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
-4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+1. Em casa, antes de tudo: conseguir clonar (HTTPS primeiro; se não der, anotar o erro inteiro; SSH só depois de gerar e cadastrar a chave daquele computador).
+2. Terminar as constantes no `Aluno.cs`: `TamanhoNome` está com **254**, mas o decidido foi **100**; os nomes do nome e do e-mail devem dizer que são um **máximo** (como `AlturaMaxima`).
+3. Nos `set` do `NomeCompleto` e do `Email`: guardar o texto limpo numa variável (como o `cpfLimpo`), conferir o tamanho máximo com `if` + exceção (a mesma do tamanho do CPF) e mensagem usando a constante; gravar a variável. Compilar, teste de mesa, **revisar** e commit (mensagem escrita pelo aluno).
+4. Configurar o banco no `JotaFitContext` (`OnModelCreating`, método do `DbContext` que se sobrescreve): tamanho máximo do CPF, do nome e do e-mail usando `Aluno.Constante`, e índice único no CPF. Commit.
+5. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
+6. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
 - Validar os dígitos verificadores do CPF (CPF "matematicamente válido"): fica para depois.
-- Que tamanho máximo dar ao nome e ao e-mail (decidir no passo 3).
 - Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
 - Como o EF Core cria um `Aluno` lendo do banco? A migration não reclamou do construtor; confirmar de vez na primeira leitura do banco (Service/Postman).
 
 ## Rotina com dois computadores
 
 - Ao sair: `add` + `commit` + `push`. Ao chegar: `git pull` antes de mexer.
+- **Em 29/10, o clone falhou em casa:** por SSH deu `Permission denied (publickey)` (falta chave daquele computador no GitHub); por HTTPS o erro não foi anotado. O repositório é público, então o HTTPS deveria clonar sem login.
 - **Pendente:** no outro computador, apagar a pasta do projeto e fazer `git clone` novo (o histórico foi reescrito; não dar `push` de lá antes disso).
 - **Pendente:** depois do clone, conferir com `git config user.email` que o e-mail é o noreply do GitHub antes do primeiro commit.
 - **Pendente:** no outro computador, instalar a ferramenta: `dotnet tool install --global dotnet-ef --version 10.0.14` (os pacotes chegam sozinhos pelo restore; a ferramenta não). Conferir também se o LocalDB existe lá (`sqllocaldb info`).
