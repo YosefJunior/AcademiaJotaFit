@@ -9,6 +9,7 @@ public class Aluno
     public const int TamanhoCpf = 11;
     public const int TamanhoMaximoEmail = 254;
     public const int TamanhoMaximoNome = 100;
+    private const int TamanhoMinimoNome = 2;
 
     public int Id { get; private set; }
     public string NomeCompleto
@@ -18,9 +19,17 @@ public class Aluno
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException("O campo 'Nome' precisa estar preenchido.");
+                throw new ArgumentException("O campo 'Nome Completo' precisa estar preenchido.");
             }
-            field = value.Trim();
+
+            var nomeLimpo = value.Trim();
+
+            if (nomeLimpo.Length < TamanhoMinimoNome || nomeLimpo.Length > TamanhoMaximoNome)
+            {
+                throw new ArgumentOutOfRangeException(nameof(NomeCompleto), $"O campo 'Nome Completo' deve ter entre {TamanhoMinimoNome} e {TamanhoMaximoNome} caracteres para ser válido.");
+            }
+
+            field = nomeLimpo;
         }
     }
     public DateOnly DataNascimento
@@ -56,9 +65,17 @@ public class Aluno
         {
             if (string.IsNullOrWhiteSpace(value))
             {
-                throw new ArgumentException("O campo 'Email' não pode ser vazio.");
+                throw new ArgumentException("O campo 'E-mail' não pode ser vazio.");
             }
-            field = value.ToLowerInvariant().Trim();
+
+            var emailLimpo = value.Trim().ToLowerInvariant();
+
+            if (emailLimpo.Length > TamanhoMaximoEmail)
+            {
+                throw new ArgumentOutOfRangeException(nameof(Email), $"O campo 'E-mail' deve ter no máximo {TamanhoMaximoEmail} caracteres.");
+            }
+
+            field = emailLimpo;
         }
     }
     public string Cpf
