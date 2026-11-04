@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 30/10/2026
+Última atualização: 04/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. Começando os limites de tamanho do nome e do e-mail no `Aluno.cs`: as constantes `TamanhoCpf`, `TamanhoEmail` e `TamanhoNome` foram criadas/tornadas `public` (commit em andamento, já no GitHub). Ainda faltam ajustes nas constantes e os `if` nos `set` (ver Próximos passos).
+Branch `feature/aluno-ef-core`, tudo commitado e no GitHub. O `JotaFitContext` já configura no `OnModelCreating` o tamanho das colunas do `Aluno` (nome, e-mail e CPF fixo). Falta o índice único no CPF; depois vem a migration.
 
 ## O que já foi feito
 
@@ -34,7 +34,9 @@ Branch `feature/aluno-ef-core`. Começando os limites de tamanho do nome e do e-
 - Primeira migration gerada, lida e descartada (nada foi aplicado no banco; o banco ainda não existe).
 - `set` do `Cpf` na ordem (c) não vazio → (d) remove ponto, traço e espaço numa variável `cpfLimpo` → (e) `foreach` que barra caractere que não é dígito → (b) tamanho diferente de `TamanhoCpf` → (a) grava o `cpfLimpo`. Constante `TamanhoCpf` (`int`) criada; `Trim` removido (o passo (d) já tira os espaços).
 - Acabamento das mensagens do CPF (texto da regra real, `nameof(Cpf)`, aspas simples e acento) (commit "Ajusta mensagens de validação do CPF").
-- Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` virou `public`; `TamanhoEmail` (254) e `TamanhoNome` criadas como `public` (trabalho em andamento).
+- Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` (11), `TamanhoMaximoNome` (100) e `TamanhoMaximoEmail` (254) são `public`; `TamanhoMinimoNome` (2) é `private`.
+- `set` do `NomeCompleto` e do `Email`: o texto limpo (`Trim`, e no e-mail também `ToLowerInvariant`) vai para uma variável, o tamanho é conferido com `ArgumentOutOfRangeException` e uma mensagem que usa as constantes, e a variável é gravada. O nome tem mínimo e máximo; o e-mail, só máximo (commit "Conclui limites de tamanho do nome e do e-mail").
+- `JotaFitContext` sobrescreve o `OnModelCreating` (chamando o `base`): `NomeCompleto` e `Email` com `HasMaxLength` e a constante; `Cpf` com `HasMaxLength` + `IsFixedLength` (commit "Configura o tamanho das colunas da entidade Aluno").
 
 ## Decisões tomadas
 
@@ -84,6 +86,10 @@ Branch `feature/aluno-ef-core`. Começando os limites de tamanho do nome e do e-
 - Só as constantes que o banco usa ficam `public` (CPF, nome, e-mail); altura e peso continuam `private`. O `JotaFitContext` as lê como `Aluno.TamanhoCpf`.
 - O tamanho é conferido **depois** do `Trim`: o que vai para o banco é o texto limpo.
 - Duplicata de CPF verificada no Service **e** barrada pelo índice único: o Service dá a mensagem clara (409); o índice garante nos cadastros simultâneos. Só o banco daria erro 500 com mensagem técnica.
+- Configuração do banco direto no `OnModelCreating` do `JotaFitContext`, não em arquivos separados (`IEntityTypeConfiguration` + `ApplyConfigurationsFromAssembly`): só existe uma entidade, e a forma separada usa interface, que ainda não foi estudada. Separar (refatorar) quando o método crescer com Plano e Matrícula.
+- No lambda da configuração, o parâmetro se chama `aluno` nas três linhas: ele é sempre um aluno, e a propriedade é o que vem depois do ponto.
+- CPF com tamanho **fixo** no banco (`IsFixedLength`, vira `nchar(11)`): sempre tem exatamente 11 dígitos.
+- Commit "Conclui" só quando houve um "Inicia" antes. Título do commit com até uns 50 caracteres, no formato verbo + o quê + de quem.
 - De agora em diante, o aluno escreve as próprias mensagens de commit; o Claude só comenta.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
@@ -164,16 +170,24 @@ Branch `feature/aluno-ef-core`. Começando os limites de tamanho do nome e do e-
 - Erro de banco não tratado vira **500** (parece defeito do servidor); erro de regra tratado no Service vira resposta clara (ex.: **409 Conflict**).
 - Commit com várias linhas: título, linha em branco, corpo. No Git Bash, crase dentro de aspas duplas é executada como comando; usar `git commit` sem `-m` (abre o editor).
 - Branch `feature/` pode receber trabalho pela metade; `git stash` fica só no computador local, não viaja pelo GitHub.
+- Herança: a classe filha (`JotaFitContext : DbContext`) recebe tudo o que a classe pai tem.
+- `virtual` (o pai permite trocar) e `override` (o filho troca o comportamento): base do polimorfismo.
+- `base.Metodo(...)` chama explicitamente o método do pai. Com `override`, o código do pai continua existindo, mas só roda se for chamado. Esquecer o `base` numa classe pai que configura coisas (ex.: `IdentityDbContext`) faz configurações sumirem sem erro.
+- `OnConfiguring` (recebe `DbContextOptionsBuilder`) diz **como conectar**; `OnModelCreating` (recebe `ModelBuilder`) diz **como são as tabelas**. O tipo do parâmetro mostra a diferença.
+- Fluent API: encadear entidade → propriedade → regra (`Entity<T>()` → `Property(...)` → `HasMaxLength(...)`).
+- No lambda `aluno => aluno.Cpf`, o parâmetro representa um aluno qualquer, e o nome é livre. O lambda serve para apontar **qual** propriedade configurar.
+- `HasMaxLength` = tamanho variável até o limite (`nvarchar(n)`); com `IsFixedLength`, é sempre aquele tamanho (`nchar(n)`).
+- E-mail com 254: a RFC 5321 limita o path a 256 caracteres, contando os sinais `< >`, e 256 − 2 = 254. A parte local (antes do `@`) vai até 64.
+- Condição de corrida (*race condition*): duas requisições checam ao mesmo tempo, as duas veem "não existe" e as duas gravam. Só uma restrição no banco (índice único) barra isso. É a mesma ideia da idempotência contra pedido duplicado.
+- Conferir o que o autocomplete escolhe antes de aceitar (nome e tipo do parâmetro).
 - SSH: par de chaves (pública no GitHub, privada só no computador); cada computador tem o seu. `Permission denied (publickey)` = chave daquele computador não cadastrada.
 
 ## Próximos passos
 
 1. Em casa, antes de tudo: conseguir clonar (HTTPS primeiro; se não der, anotar o erro inteiro; SSH só depois de gerar e cadastrar a chave daquele computador).
-2. Terminar as constantes no `Aluno.cs`: `TamanhoNome` está com **254**, mas o decidido foi **100**; os nomes do nome e do e-mail devem dizer que são um **máximo** (como `AlturaMaxima`).
-3. Nos `set` do `NomeCompleto` e do `Email`: guardar o texto limpo numa variável (como o `cpfLimpo`), conferir o tamanho máximo com `if` + exceção (a mesma do tamanho do CPF) e mensagem usando a constante; gravar a variável. Compilar, teste de mesa, **revisar** e commit (mensagem escrita pelo aluno).
-4. Configurar o banco no `JotaFitContext` (`OnModelCreating`, método do `DbContext` que se sobrescreve): tamanho máximo do CPF, do nome e do e-mail usando `Aluno.Constante`, e índice único no CPF. Commit.
-5. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
-6. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+2. No `OnModelCreating`: criar o **índice único** no `Cpf` (pesquisar como o `modelBuilder` cria um índice numa propriedade e o torna único). Ajuste pequeno: passar o `.IsFixedLength()` do CPF para a linha de baixo, um método por linha. Compilar, **revisar** e commit.
+3. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
+4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
 
 ## Dúvidas em aberto
 
