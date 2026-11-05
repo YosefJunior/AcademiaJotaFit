@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 04/11/2026
+Última atualização: 05/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`, tudo commitado e no GitHub. O `JotaFitContext` já configura no `OnModelCreating` o tamanho das colunas do `Aluno` (nome, e-mail e CPF fixo). Falta o índice único no CPF; depois vem a migration.
+Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating`; migration `CriaTabelaAlunos` gerada, lida e **aplicada** (`database update`). O banco `AcademiaJotaFit` existe com as tabelas `Alunos` e `__EFMigrationsHistory`. Próxima etapa: DTOs do Aluno.
 
 ## O que já foi feito
 
@@ -37,6 +37,9 @@ Branch `feature/aluno-ef-core`, tudo commitado e no GitHub. O `JotaFitContext` j
 - Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` (11), `TamanhoMaximoNome` (100) e `TamanhoMaximoEmail` (254) são `public`; `TamanhoMinimoNome` (2) é `private`.
 - `set` do `NomeCompleto` e do `Email`: o texto limpo (`Trim`, e no e-mail também `ToLowerInvariant`) vai para uma variável, o tamanho é conferido com `ArgumentOutOfRangeException` e uma mensagem que usa as constantes, e a variável é gravada. O nome tem mínimo e máximo; o e-mail, só máximo (commit "Conclui limites de tamanho do nome e do e-mail").
 - `JotaFitContext` sobrescreve o `OnModelCreating` (chamando o `base`): `NomeCompleto` e `Email` com `HasMaxLength` e a constante; `Cpf` com `HasMaxLength` + `IsFixedLength` (commit "Configura o tamanho das colunas da entidade Aluno").
+- Quarto bloco no `OnModelCreating`: `HasIndex` no `Cpf` + `IsUnique` (commit "Cria índice único para CPF da entidade Aluno").
+- Migration `CriaTabelaAlunos` gerada e lida: `Cpf` como `nchar(11)`, `NomeCompleto` `nvarchar(100)`, `Email` `nvarchar(254)`, índice `IX_Alunos_Cpf` com `unique: true`; `Down` faz `DropTable`. Aplicada com `dotnet ef database update`.
+- Tabela conferida no Pesquisador de Objetos do SQL Server (Visual Studio).
 
 ## Decisões tomadas
 
@@ -91,6 +94,8 @@ Branch `feature/aluno-ef-core`, tudo commitado e no GitHub. O `JotaFitContext` j
 - CPF com tamanho **fixo** no banco (`IsFixedLength`, vira `nchar(11)`): sempre tem exatamente 11 dígitos.
 - Commit "Conclui" só quando houve um "Inicia" antes. Título do commit com até uns 50 caracteres, no formato verbo + o quê + de quem.
 - De agora em diante, o aluno escreve as próprias mensagens de commit; o Claude só comenta.
+- Índice é configuração da **entidade** (`Entity<Aluno>().HasIndex(...)`), não da coluna: fica num bloco separado do `Property` do CPF, que mantém o tamanho.
+- Mensagem de commit em português corrido: sem palavra-chave SQL em maiúsculo (ex.: "UNIQUE") e sem dizer o óbvio ("no banco").
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -180,14 +185,22 @@ Branch `feature/aluno-ef-core`, tudo commitado e no GitHub. O `JotaFitContext` j
 - E-mail com 254: a RFC 5321 limita o path a 256 caracteres, contando os sinais `< >`, e 256 − 2 = 254. A parte local (antes do `@`) vai até 64.
 - Condição de corrida (*race condition*): duas requisições checam ao mesmo tempo, as duas veem "não existe" e as duas gravam. Só uma restrição no banco (índice único) barra isso. É a mesma ideia da idempotência contra pedido duplicado.
 - Conferir o que o autocomplete escolhe antes de aceitar (nome e tipo do parâmetro).
+- `HasIndex(lambda)` cria índice; `IsUnique()` o torna único. Sem `unique`, o índice só acelera a busca e aceita repetido. Nome padrão do EF: `IX_Tabela_Coluna`.
+- CPF é **chave candidata**: identifica sozinho, mas não é a chave primária; garante-se com restrição `UNIQUE` / índice único.
+- Migration é um processo: muda o modelo → `migrations add` (compara com o snapshot) → **ler a receita** → `database update` → commit. A tabela `__EFMigrationsHistory` registra o que já foi aplicado.
+- `migrations remove` só se a migration não foi aplicada nem compartilhada; senão, corrige-se com migration nova (igual a commit publicado no Git).
+- Em produção, gera-se script com `dotnet ef migrations script` para revisão, em vez de `database update` direto.
+- DDL (`CREATE TABLE`, `ALTER`, `CREATE INDEX`) define estrutura; DML (`INSERT`, `SELECT`, `UPDATE`, `DELETE`) mexe nos dados.
+- Pesquisa boa é pelo **conceito** ou nome do método ("EF Core HasIndex"), não pelo problema inteiro ("CPF único EF Core"), que devolve a solução pronta.
 - SSH: par de chaves (pública no GitHub, privada só no computador); cada computador tem o seu. `Permission denied (publickey)` = chave daquele computador não cadastrada.
 
 ## Próximos passos
 
 1. Em casa, antes de tudo: conseguir clonar (HTTPS primeiro; se não der, anotar o erro inteiro; SSH só depois de gerar e cadastrar a chave daquele computador).
-2. No `OnModelCreating`: criar o **índice único** no `Cpf` (pesquisar como o `modelBuilder` cria um índice numa propriedade e o torna único). Ajuste pequeno: passar o `.IsFixedLength()` do CPF para a linha de baixo, um método por linha. Compilar, **revisar** e commit.
-3. Gerar a migration de novo (`dotnet ef migrations add CriaTabelaAlunos`, dentro de `src/AcademiaJotaFit.Api`), ler, aplicar com `dotnet ef database update` e conferir a tabela `Alunos` no SQL Server Object Explorer.
-4. DTOs (com Data Annotations), Service, Controller e testes no Postman para o Aluno.
+2. Pergunta pendente: abrir a tabela `Alunos` no Designer de Exibição e conferir as colunas com a migration.
+3. DTO de entrada do Aluno (cadastro) com Data Annotations: listar no papel quais campos entram e quais regras de formato cada um tem.
+4. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
+5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
 
 ## Dúvidas em aberto
 
