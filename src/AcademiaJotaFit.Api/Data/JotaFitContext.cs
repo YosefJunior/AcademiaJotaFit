@@ -25,5 +25,9 @@ public class JotaFitContext : DbContext
             .Property(aluno => aluno.Cpf)
             .HasMaxLength(Aluno.TamanhoCpf)
             .IsFixedLength();
+
+        modelBuilder.Entity<Aluno>()
+            .HasIndex(aluno => aluno.Cpf)
+            .IsUnique();
     }
 }
