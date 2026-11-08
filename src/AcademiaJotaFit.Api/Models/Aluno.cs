@@ -3,9 +3,9 @@
 public class Aluno
 {
     private const int AlturaMaxima = 300;
-    private const int AlturaMinima = 0;
+    private const int AlturaMinima = 65;
     private const double PesoMaximo = 600;
-    private const double PesoMinimo = 0;
+    private const double PesoMinimo = 27;
     public const int TamanhoCpf = 11;
     public const int TamanhoMaximoEmail = 254;
     public const int TamanhoMaximoNome = 100;
@@ -154,7 +154,7 @@ public class Aluno
 
     private static void ValidarAltura(int altura)
     {
-        if (altura <= AlturaMinima || altura >= AlturaMaxima)
+        if (altura < AlturaMinima || altura > AlturaMaxima)
         {
             throw new ArgumentOutOfRangeException(nameof(Altura), $"O campo 'Altura' deve ser superior a {AlturaMinima}cm e inferior a {AlturaMaxima}cm");
         }
@@ -162,7 +162,7 @@ public class Aluno
 
     private static void ValidarPeso(double peso)
     {
-        if (peso <= PesoMinimo || peso >= PesoMaximo)
+        if (peso < PesoMinimo || peso > PesoMaximo)
         {
             throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ser superior a {PesoMinimo}kg e inferior a {PesoMaximo}kg");
         }
