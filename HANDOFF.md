@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 05/11/2026
+Última atualização: 08/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating`; migration `CriaTabelaAlunos` gerada, lida e **aplicada** (`database update`). O banco `AcademiaJotaFit` existe com as tabelas `Alunos` e `__EFMigrationsHistory`. Próxima etapa: DTOs do Aluno.
+Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dotnet ef database update`) e tabela `Alunos` conferida com a migration. Campos e regras do DTO de cadastro do Aluno definidos no papel (ver Decisões). Novos mínimos de altura (65 cm) e peso (27 kg) na entidade (commit "Reconfigura as regras de altura e peso, valor minimo"). Próxima etapa: escrever a classe do DTO.
 
 ## O que já foi feito
 
@@ -18,7 +18,7 @@ Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating
   - `NomeCompleto`, `Email`, `Cpf`: não podem ser vazios ou só espaços; espaços das pontas removidos.
   - `Email` guardado em minúsculas.
   - `DataNascimento`: não pode estar no futuro.
-  - `Altura` (0–300 cm) e `Peso` (0–600 kg), com limites em constantes.
+  - `Altura` (65–300 cm) e `Peso` (27–600 kg), com limites em constantes (mínimos eram 0 até 08/11).
   - Corrigido bug de recursão infinita no cálculo da `Idade`.
 - Métodos de alteração no `Aluno` (PR #2 na `main`):
   - `AtualizarNome` e `AtualizarEmail`: só atribuem à propriedade; a validação do `set` cuida do resto.
@@ -40,6 +40,8 @@ Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating
 - Quarto bloco no `OnModelCreating`: `HasIndex` no `Cpf` + `IsUnique` (commit "Cria índice único para CPF da entidade Aluno").
 - Migration `CriaTabelaAlunos` gerada e lida: `Cpf` como `nchar(11)`, `NomeCompleto` `nvarchar(100)`, `Email` `nvarchar(254)`, índice `IX_Alunos_Cpf` com `unique: true`; `Down` faz `DropTable`. Aplicada com `dotnet ef database update`.
 - Tabela conferida no Pesquisador de Objetos do SQL Server (Visual Studio).
+- Computador de casa: projeto clonado e banco criado com `dotnet ef database update`. `Cpf` como `nchar(11)` e índice `IX_Alunos_Cpf` (`UNIQUE NONCLUSTERED`) conferidos.
+- DTO de cadastro do Aluno definido no papel (campos e regras de formato), ainda sem código.
 
 ## Decisões tomadas
 
@@ -96,6 +98,12 @@ Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating
 - De agora em diante, o aluno escreve as próprias mensagens de commit; o Claude só comenta.
 - Índice é configuração da **entidade** (`Entity<Aluno>().HasIndex(...)`), não da coluna: fica num bloco separado do `Property` do CPF, que mantém o tamanho.
 - Mensagem de commit em português corrido: sem palavra-chave SQL em maiúsculo (ex.: "UNIQUE") e sem dizer o óbvio ("no banco").
+- DTO de cadastro do Aluno **não** recebe `Id` (gerado pelo banco, `Identity`) nem `Idade` (calculada a partir da data de nascimento).
+- Regras de formato do DTO de cadastro: `NomeCompleto` obrigatório, de 2 a 100 caracteres; `Email` obrigatório, até 254, com `[EmailAddress]`; `DataNascimento` obrigatória; `Cpf` obrigatório, exatamente 11 dígitos; `Altura` obrigatória, de 65 a 300 cm; `Peso` obrigatório, de 27 a 600 kg. Os limites são os mesmos da entidade.
+- CPF entra na API **sem máscara** (só os 11 dígitos): o contrato fica padronizado e formatar para exibição é papel do front.
+- Formato de e-mail com o atributo pronto `[EmailAddress]`, sem regra inventada: regras caseiras (ex.: "2 letras antes do @") recusam e-mails válidos como `a@b.com`.
+- "Data de nascimento não pode estar no futuro" fica na **entidade**, não no DTO: precisa valer em todo caminho (API, job, importação), e um job que cria `new Aluno(...)` não passa pelo DTO.
+- Mínimos de altura (65 cm) e peso (27 kg) baseados em dados reais, em vez de 0: zero não é medida de uma pessoa.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
 
 ## Conceitos aprendidos
@@ -193,14 +201,20 @@ Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating
 - DDL (`CREATE TABLE`, `ALTER`, `CREATE INDEX`) define estrutura; DML (`INSERT`, `SELECT`, `UPDATE`, `DELETE`) mexe nos dados.
 - Pesquisa boa é pelo **conceito** ou nome do método ("EF Core HasIndex"), não pelo problema inteiro ("CPF único EF Core"), que devolve a solução pronta.
 - SSH: par de chaves (pública no GitHub, privada só no computador); cada computador tem o seu. `Permission denied (publickey)` = chave daquele computador não cadastrada.
+- Migration é código e viaja pelo Git; o **banco** não. Cada computador tem o próprio LocalDB, vazio até rodar `dotnet ef database update`. É isso que torna o banco reproduzível em qualquer ambiente.
+- `dotnet ef migrations ...` mexe nos **arquivos** de migration; `dotnet ef database ...` mexe no **banco**.
+- Índice **clustered** define a ordem física da tabela (só um por tabela, normalmente a PK); **nonclustered** é uma estrutura separada que aponta para as linhas (pode haver vários).
+- `nchar(n)` = tamanho fixo (CPF); `nvarchar(n)` = tamanho variável até `n` (nome, e-mail).
+- Defesa em camadas: o DTO filtra o formato do que entra pela API (mensagem amigável); a entidade garante as regras do domínio em qualquer caminho; o banco garante unicidade até em requisições simultâneas.
+- 500 = erro interno (exceção não tratada); 501 = *Not Implemented* (outra coisa).
+- Git só enxerga o que está **salvo no disco**: edição não salva no editor não aparece no `git status`.
 
 ## Próximos passos
 
-1. Em casa, antes de tudo: conseguir clonar (HTTPS primeiro; se não der, anotar o erro inteiro; SSH só depois de gerar e cadastrar a chave daquele computador).
-2. Pergunta pendente: abrir a tabela `Alunos` no Designer de Exibição e conferir as colunas com a migration.
-3. DTO de entrada do Aluno (cadastro) com Data Annotations: listar no papel quais campos entram e quais regras de formato cada um tem.
-4. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
-5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
+1. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
+2. Escrever a classe do DTO de cadastro do Aluno em `DTOs/` com as Data Annotations definidas no papel.
+3. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
+4. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
 
 ## Dúvidas em aberto
 
@@ -211,7 +225,6 @@ Branch `feature/aluno-ef-core`. Índice único no CPF criado no `OnModelCreating
 ## Rotina com dois computadores
 
 - Ao sair: `add` + `commit` + `push`. Ao chegar: `git pull` antes de mexer.
-- **Em 29/10, o clone falhou em casa:** por SSH deu `Permission denied (publickey)` (falta chave daquele computador no GitHub); por HTTPS o erro não foi anotado. O repositório é público, então o HTTPS deveria clonar sem login.
-- **Pendente:** no outro computador, apagar a pasta do projeto e fazer `git clone` novo (o histórico foi reescrito; não dar `push` de lá antes disso).
-- **Pendente:** depois do clone, conferir com `git config user.email` que o e-mail é o noreply do GitHub antes do primeiro commit.
+- Clone e banco no computador de casa resolvidos em 08/11.
+- **Pendente:** conferir com `git config user.email` que o e-mail é o noreply do GitHub antes do primeiro commit.
 - **Pendente:** no outro computador, instalar a ferramenta: `dotnet tool install --global dotnet-ef --version 10.0.14` (os pacotes chegam sozinhos pelo restore; a ferramenta não). Conferir também se o LocalDB existe lá (`sqllocaldb info`).
