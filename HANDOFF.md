@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 08/11/2026
+Última atualização: 09/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dotnet ef database update`) e tabela `Alunos` conferida com a migration. Campos e regras do DTO de cadastro do Aluno definidos no papel (ver Decisões). Novos mínimos de altura (65 cm) e peso (27 kg) na entidade (commit "Reconfigura as regras de altura e peso, valor minimo"). Próxima etapa: escrever a classe do DTO.
+Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (commit "Inicia DTO de cadastro do Aluno"), com todos os campos definidos no papel, menos o `Peso`. Próxima etapa: escrever o `Peso` no DTO e concluir a classe.
 
 ## O que já foi feito
 
@@ -34,14 +34,16 @@ Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dot
 - Primeira migration gerada, lida e descartada (nada foi aplicado no banco; o banco ainda não existe).
 - `set` do `Cpf` na ordem (c) não vazio → (d) remove ponto, traço e espaço numa variável `cpfLimpo` → (e) `foreach` que barra caractere que não é dígito → (b) tamanho diferente de `TamanhoCpf` → (a) grava o `cpfLimpo`. Constante `TamanhoCpf` (`int`) criada; `Trim` removido (o passo (d) já tira os espaços).
 - Acabamento das mensagens do CPF (texto da regra real, `nameof(Cpf)`, aspas simples e acento) (commit "Ajusta mensagens de validação do CPF").
-- Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` (11), `TamanhoMaximoNome` (100) e `TamanhoMaximoEmail` (254) são `public`; `TamanhoMinimoNome` (2) é `private`.
+- Constantes de tamanho no topo do `Aluno`: `TamanhoCpf` (11), `TamanhoMaximoNome` (100), `TamanhoMaximoEmail` (254) e `TamanhoMinimoNome` (2), todas `public`.
 - `set` do `NomeCompleto` e do `Email`: o texto limpo (`Trim`, e no e-mail também `ToLowerInvariant`) vai para uma variável, o tamanho é conferido com `ArgumentOutOfRangeException` e uma mensagem que usa as constantes, e a variável é gravada. O nome tem mínimo e máximo; o e-mail, só máximo (commit "Conclui limites de tamanho do nome e do e-mail").
 - `JotaFitContext` sobrescreve o `OnModelCreating` (chamando o `base`): `NomeCompleto` e `Email` com `HasMaxLength` e a constante; `Cpf` com `HasMaxLength` + `IsFixedLength` (commit "Configura o tamanho das colunas da entidade Aluno").
 - Quarto bloco no `OnModelCreating`: `HasIndex` no `Cpf` + `IsUnique` (commit "Cria índice único para CPF da entidade Aluno").
 - Migration `CriaTabelaAlunos` gerada e lida: `Cpf` como `nchar(11)`, `NomeCompleto` `nvarchar(100)`, `Email` `nvarchar(254)`, índice `IX_Alunos_Cpf` com `unique: true`; `Down` faz `DropTable`. Aplicada com `dotnet ef database update`.
 - Tabela conferida no Pesquisador de Objetos do SQL Server (Visual Studio).
 - Computador de casa: projeto clonado e banco criado com `dotnet ef database update`. `Cpf` como `nchar(11)` e índice `IX_Alunos_Cpf` (`UNIQUE NONCLUSTERED`) conferidos.
-- DTO de cadastro do Aluno definido no papel (campos e regras de formato), ainda sem código.
+- DTO de cadastro do Aluno definido no papel (campos e regras de formato).
+- `DTOs/CadastroAlunoDto.cs` criado com Data Annotations e mensagens em `NomeCompleto`, `DataNascimento`, `Email`, `Cpf` e `Altura`; falta o `Peso` (commit "Inicia DTO de cadastro do Aluno").
+- Constantes de limite do `Aluno` (altura, peso e tamanho mínimo do nome) passaram a `public`, para o DTO usá-las.
 
 ## Decisões tomadas
 
@@ -83,12 +85,12 @@ Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dot
 - No banco, o CPF terá índice **único**, além da checagem no Service: é a última linha de defesa contra cadastros simultâneos.
 - Ordem do `set` do CPF: limpar (d) antes de conferir dígitos (e) e tamanho (b), senão um CPF pontuado (14 caracteres, com `.` e `-`) seria recusado; (e) antes de (b) para que `"abc"` receba a mensagem que explica o problema real.
 - Vírgula **não** é removida do CPF: não faz parte do formato; se aparecer, é erro de digitação e deve ser avisado (estratégia B).
-- Sem Regex por enquanto: os métodos de `string` e o `foreach` resolvem, e cada passo fica legível.
+- Sem Regex na entidade por enquanto: os métodos de `string` e o `foreach` resolvem, e cada passo fica legível. No DTO, o atributo `[RegularExpression]` confere que o CPF só tem dígitos.
 - A entidade não escreve no console (`Console.Write`): ela não sabe se existe tela; testes reais virão pelo Postman.
 - `using` sugerido pelo Visual Studio que não se reconhece (ex.: `Microsoft.IdentityModel.Tokens`) é sinal de método errado: desconfiar e apagar.
 - Tamanho máximo: nome **100** (nomes brasileiros longos passam de 40; o teto pega erro, não recusa pessoa real) e e-mail **254** (limite da especificação RFC 5321).
 - O limite fica nos **dois lugares** com o mesmo valor: entidade (`if` no `set`, mensagem clara) e banco (`OnModelCreating`). Se o banco for menor que a entidade, o erro só aparece ao gravar, com mensagem técnica.
-- Só as constantes que o banco usa ficam `public` (CPF, nome, e-mail); altura e peso continuam `private`. O `JotaFitContext` as lê como `Aluno.TamanhoCpf`.
+- Constantes de limite do `Aluno` são `public`: o `JotaFitContext` e o DTO as leem (ex.: `Aluno.TamanhoCpf`), e o limite continua definido num lugar só.
 - O tamanho é conferido **depois** do `Trim`: o que vai para o banco é o texto limpo.
 - Duplicata de CPF verificada no Service **e** barrada pelo índice único: o Service dá a mensagem clara (409); o índice garante nos cadastros simultâneos. Só o banco daria erro 500 com mensagem técnica.
 - Configuração do banco direto no `OnModelCreating` do `JotaFitContext`, não em arquivos separados (`IEntityTypeConfiguration` + `ApplyConfigurationsFromAssembly`): só existe uma entidade, e a forma separada usa interface, que ainda não foi estudada. Separar (refatorar) quando o método crescer com Plano e Matrícula.
@@ -105,6 +107,7 @@ Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dot
 - "Data de nascimento não pode estar no futuro" fica na **entidade**, não no DTO: precisa valer em todo caminho (API, job, importação), e um job que cria `new Aluno(...)` não passa pelo DTO.
 - Mínimos de altura (65 cm) e peso (27 kg) baseados em dados reais, em vez de 0: zero não é medida de uma pessoa.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
+- Campos de tipo de valor obrigatórios no DTO (`DataNascimento`, `Altura`) são anuláveis: sem o `?`, campo ausente receberia o valor padrão, e o `[Required]` não conseguiria reprovar.
 
 ## Conceitos aprendidos
 
@@ -208,13 +211,16 @@ Branch `feature/aluno-ef-core`. Banco criado também no computador de casa (`dot
 - Defesa em camadas: o DTO filtra o formato do que entra pela API (mensagem amigável); a entidade garante as regras do domínio em qualquer caminho; o banco garante unicidade até em requisições simultâneas.
 - 500 = erro interno (exceção não tratada); 501 = *Not Implemented* (outra coisa).
 - Git só enxerga o que está **salvo no disco**: edição não salva no editor não aparece no `git status`.
+- `[Required]` só reprova `null`. Um `int` ausente no JSON fica `0`, que não é `null`: passa pelo `[Required]` e cai no `[Range]`, com a mensagem errada.
+- `int?` (tipo anulável) **aceita** `null`: é isso que permite ao `[Required]` detectar que o campo não veio.
 
 ## Próximos passos
 
-1. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
-2. Escrever a classe do DTO de cadastro do Aluno em `DTOs/` com as Data Annotations definidas no papel.
-3. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
-4. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
+1. Escrever a propriedade `Peso` no `CadastroAlunoDto`: obrigatória, anulável, de 27 a 600 kg, usando as constantes do `Aluno`.
+2. Conferir o DTO completo contra as regras do papel e commitar a conclusão da classe.
+3. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
+4. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
+5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
 
 ## Dúvidas em aberto
 
