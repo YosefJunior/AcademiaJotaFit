@@ -156,7 +156,7 @@ public class Aluno
     {
         if (altura < AlturaMinima || altura > AlturaMaxima)
         {
-            throw new ArgumentOutOfRangeException(nameof(Altura), $"O campo 'Altura' deve ser superior a {AlturaMinima}cm e inferior a {AlturaMaxima}cm");
+            throw new ArgumentOutOfRangeException(nameof(Altura), $"O campo 'Altura' deve ter entre {AlturaMinima}cm e {AlturaMaxima}cm.");
         }
     }
 
@@ -164,7 +164,7 @@ public class Aluno
     {
         if (peso < PesoMinimo || peso > PesoMaximo)
         {
-            throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ser superior a {PesoMinimo}kg e inferior a {PesoMaximo}kg");
+            throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ter entre {PesoMinimo}kg e {PesoMaximo}kg.");
         }
     }
 }
