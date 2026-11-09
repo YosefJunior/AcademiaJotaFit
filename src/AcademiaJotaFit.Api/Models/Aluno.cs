@@ -2,14 +2,14 @@
 
 public class Aluno
 {
-    private const int AlturaMaxima = 300;
-    private const int AlturaMinima = 65;
-    private const double PesoMaximo = 600;
-    private const double PesoMinimo = 27;
+    public const int AlturaMaxima = 300;
+    public const int AlturaMinima = 65;
+    public const double PesoMaximo = 600;
+    public const double PesoMinimo = 27;
     public const int TamanhoCpf = 11;
     public const int TamanhoMaximoEmail = 254;
     public const int TamanhoMaximoNome = 100;
-    private const int TamanhoMinimoNome = 2;
+    public const int TamanhoMinimoNome = 2;
 
     public int Id { get; private set; }
     public string NomeCompleto
