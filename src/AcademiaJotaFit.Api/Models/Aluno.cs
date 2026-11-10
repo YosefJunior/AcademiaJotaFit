@@ -102,6 +102,22 @@ public class Aluno
                 throw new ArgumentOutOfRangeException(nameof(Cpf), $"O campo 'CPF' precisa ter {TamanhoCpf} dígitos.");
             }
 
+            var digitosIguais = true;
+
+            foreach (var digito in cpfLimpo)
+            {
+                if (digito != cpfLimpo[0])
+                {
+                    digitosIguais = false;
+                    break;
+                }
+            }
+
+            if (digitosIguais)
+            {
+                throw new ArgumentException("O campo 'CPF' não pode conter todos os dígitos iguais.");
+            }
+
             field = cpfLimpo;
         }
     }
