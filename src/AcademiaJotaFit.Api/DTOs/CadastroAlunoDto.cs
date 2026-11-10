@@ -19,7 +19,7 @@ public class CadastroAlunoDto
 
     [Required(ErrorMessage = "O CPF é obrigatório.")]
     [StringLength(Aluno.TamanhoCpf, MinimumLength = Aluno.TamanhoCpf, ErrorMessage = "O CPF deve ter exatamente {1} dígitos.")]
-    [RegularExpression(@"^\d+$", ErrorMessage = "O CPF deve conter apenas números.")]
+    [RegularExpression(@"^[0-9]+$", ErrorMessage = "O CPF deve conter apenas números entre os dígitos 0 e 9.")]
     public string? Cpf { get; set; }
 
     [Required(ErrorMessage = "A altura é obrigatória.")]

@@ -91,9 +91,9 @@ public class Aluno
 
             foreach (var caractere in cpfLimpo)
             {
-                if (!char.IsDigit(caractere))
+                if (!char.IsAsciiDigit(caractere))
                 {
-                    throw new ArgumentException("O campo 'CPF' pode conter apenas caracteres numéricos.");
+                    throw new ArgumentException("O campo 'CPF' pode conter apenas caracteres numéricos entre os dígitos 0 e 9.");
                 }
             }
 
