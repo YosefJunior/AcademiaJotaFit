@@ -66,6 +66,7 @@ AcademiaJotaFit/
 
 **Regras**
 - CPF não pode se repetir.
+- CPF tem exatamente 11 dígitos de 0 a 9, guardado sem máscara, e não pode ter todos os dígitos iguais.
 - Aluno não pode ter duas matrículas ativas ao mesmo tempo.
 - Renovação gera uma **nova** matrícula (mantém histórico).
 - Regras que consultam o banco ficam no **Service**.

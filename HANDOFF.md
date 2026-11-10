@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 09/11/2026
+Última atualização: 10/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (commit "Inicia DTO de cadastro do Aluno"), com todos os campos definidos no papel, menos o `Peso`. Próxima etapa: escrever o `Peso` no DTO e concluir a classe.
+Branch `feature/aluno-ef-core`, tudo commitado e enviado. `CadastroAlunoDto` concluído; o CPF agora aceita só dígitos de 0 a 9 (DTO e entidade) e a entidade recusa CPF com todos os dígitos iguais. Próxima etapa: decidir a idade mínima e máxima do aluno.
 
 ## O que já foi feito
 
@@ -42,8 +42,11 @@ Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (com
 - Tabela conferida no Pesquisador de Objetos do SQL Server (Visual Studio).
 - Computador de casa: projeto clonado e banco criado com `dotnet ef database update`. `Cpf` como `nchar(11)` e índice `IX_Alunos_Cpf` (`UNIQUE NONCLUSTERED`) conferidos.
 - DTO de cadastro do Aluno definido no papel (campos e regras de formato).
-- `DTOs/CadastroAlunoDto.cs` criado com Data Annotations e mensagens em `NomeCompleto`, `DataNascimento`, `Email`, `Cpf` e `Altura`; falta o `Peso` (commit "Inicia DTO de cadastro do Aluno").
+- `DTOs/CadastroAlunoDto.cs` criado com Data Annotations e mensagens em `NomeCompleto`, `DataNascimento`, `Email`, `Cpf` e `Altura` (commit "Inicia DTO de cadastro do Aluno").
 - Constantes de limite do `Aluno` (altura, peso e tamanho mínimo do nome) passaram a `public`, para o DTO usá-las.
+- `Peso` no DTO (`double?`, `Range` de mínimo a máximo com as constantes) e mensagens padronizadas: minúscula no meio da frase, "e-mail" igual ao da entidade, "CPF" sempre maiúsculo (commit "Conclui DTO de cadastro do Aluno").
+- CPF restrito a dígitos de 0 a 9: regex `[0-9]` no DTO e `char.IsAsciiDigit` na entidade (commit "Restringe a validação do CPF a dígitos entre 0 e 9").
+- Passo (f) no `set` do `Cpf`, depois do tamanho e antes de gravar: recusa CPF com os 11 dígitos iguais, usando uma variável `bool` `digitosIguais` e `break` (commit "Certifica que os dígitos do CPF não são todos iguais").
 
 ## Decisões tomadas
 
@@ -107,7 +110,12 @@ Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (com
 - "Data de nascimento não pode estar no futuro" fica na **entidade**, não no DTO: precisa valer em todo caminho (API, job, importação), e um job que cria `new Aluno(...)` não passa pelo DTO.
 - Mínimos de altura (65 cm) e peso (27 kg) baseados em dados reais, em vez de 0: zero não é medida de uma pessoa.
 - Aviso de vulnerabilidade do `System.Security.Cryptography.Pkcs` 9.0.11 (transitivo, vem do SqlServer; `GHSA-846f-f764-76mx` e `GHSA-2fmv-rv2c-59x7`) **ignorado por enquanto**: a API só roda local e não recebe certificados nem assinaturas de fora. Rever quando atualizar os pacotes do EF Core.
-- Campos de tipo de valor obrigatórios no DTO (`DataNascimento`, `Altura`) são anuláveis: sem o `?`, campo ausente receberia o valor padrão, e o `[Required]` não conseguiria reprovar.
+- Campos de tipo de valor obrigatórios no DTO (`DataNascimento`, `Altura`, `Peso`) são anuláveis: sem o `?`, campo ausente receberia o valor padrão, e o `[Required]` não conseguiria reprovar.
+- O DTO espelha a entidade: mesmo tipo (`Peso` é `double`, não `decimal`, porque `decimal` é para dinheiro), mesmas constantes, mesma ordem de mínimo e máximo.
+- CPF aceita só os dígitos ASCII de 0 a 9 nas duas camadas: `\d` e `char.IsDigit` aceitam dígitos de qualquer alfabeto (ex.: arábico), e o CPF só existe com 0 a 9.
+- CPF com os 11 dígitos iguais é recusado **na entidade** (regra de validade, vale em todo caminho; regex não é a ferramenta certa para "todos iguais"). Fica depois do tamanho, porque aí as verificações anteriores já garantem 11 dígitos de 0 a 9 (pré-condição), e cada erro recebe a mensagem do problema real.
+- O tamanho de nome e e-mail é medido antes do `Trim` no DTO e depois na entidade (`" A "` passa no DTO e falha na entidade → erro 500). Não se remenda no DTO: resolve-se no item 3 do roteiro (exceção → 400).
+- Uma regra por commit: cada mudança fica fácil de revisar e de desfazer.
 
 ## Conceitos aprendidos
 
@@ -175,7 +183,7 @@ Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (com
 - Nome de variável é substantivo (o que ela guarda, ex.: `cpfLimpo`); verbo é para método.
 - `string` é uma sequência de `char`; `char` é um caractere só, entre aspas simples (`'1'`).
 - `foreach (var x in sequencia)`: `x` é a **variável do laço**, recebe um item por volta e só existe dentro das chaves do laço.
-- `char.IsDigit(c)`: método estático do tipo `char` que responde se o caractere é de `'0'` a `'9'`.
+- `char.IsDigit(c)`: responde se o caractere é um dígito de **qualquer** alfabeto (inclui `'٣'` arábico). `char.IsAsciiDigit(c)`: só de `'0'` a `'9'`.
 - Guard clause dentro do `foreach`: o `throw` para tudo no primeiro item inválido; se o laço terminar, todos passaram. Texto vazio = laço com 0 voltas (não reprova nada).
 - `texto.Length`: propriedade (sem parênteses) com o número de caracteres. `!=` = "diferente de".
 - Sinal de `if` errado: o valor que deveria ser testado não aparece na condição (a resposta nunca muda). Comparar a constante com ela mesma é sempre igual.
@@ -213,18 +221,33 @@ Branch `feature/aluno-ef-core`. Classe `CadastroAlunoDto` criada em `DTOs/` (com
 - Git só enxerga o que está **salvo no disco**: edição não salva no editor não aparece no `git status`.
 - `[Required]` só reprova `null`. Um `int` ausente no JSON fica `0`, que não é `null`: passa pelo `[Required]` e cai no `[Range]`, com a mensagem errada.
 - `int?` (tipo anulável) **aceita** `null`: é isso que permite ao `[Required]` detectar que o campo não veio.
+- Regex: `\d` = dígito de qualquer alfabeto; `[0-9]` = intervalo, só de 0 a 9. Colchetes definem os caracteres aceitos (`[a-z]`).
+- `decimal` não vira `double` sozinho (precisa de cast); `int` vira `double` sem aviso.
+- `[Range(min, max)]`: a ordem importa. Com o mínimo maior que o máximo, o atributo lança exceção ao validar (erro 500).
+- Placeholders: no `StringLength`, `{1}` = máximo e `{2}` = mínimo; no `Range`, `{1}` = mínimo e `{2}` = máximo.
+- Compilar não é funcionar: teste de mesa com um caso válido e um inválido antes de pedir revisão.
+- `!` antes do valor = negação (inverte `true`/`false`); ler como "se NÃO...". `x!` depois do nome é outro operador (perdoa-nulo).
+- Índice de `string`: `texto[0]` é o primeiro caractere; a contagem começa em 0.
+- `=` sozinho = "recebe" (atribuição). `var` só na criação; depois, só nome, `=` e valor.
+- Variável `bool` como "memória" do laço: declarada **fora** (escopo e para não reiniciar a cada volta), começa com a suposição ("iguais até que se prove o contrário") e o laço só a derruba.
+- Decisão sobre "todos" ou "nenhum" só depois de percorrer tudo; "existe algum" pode parar no primeiro achado (`break`). Por isso um `else` dentro do laço não serve para "todos iguais".
+- `break` sai do laço; depois dele o código segue na linha após o `}` do `foreach`.
+- Pré-condição: o que as verificações anteriores já garantem quando um passo roda.
+- Nome de `bool`: afirmação que leia bem no `if` (`if (digitosIguais)`).
+- Título de commit diz **o que mudou** e precisa de leitura literal ("dígitos 0 e 9" ≠ "de 0 a 9").
 
 ## Próximos passos
 
-1. Escrever a propriedade `Peso` no `CadastroAlunoDto`: obrigatória, anulável, de 27 a 600 kg, usando as constantes do `Aluno`.
-2. Conferir o DTO completo contra as regras do papel e commitar a conclusão da classe.
-3. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
-4. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
+1. Decidir a idade mínima e máxima do aluno (hoje só se barra data no futuro: `0001-01-01` e "ontem" passam). Se houver regra, vai na entidade, com constantes.
+2. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
+3. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
+4. Tratamento de erros (exceção → 400), que resolve também o tamanho medido antes × depois do `Trim`.
 5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
 
 ## Dúvidas em aberto
 
-- Validar os dígitos verificadores do CPF (CPF "matematicamente válido"): fica para depois.
+- Validar os dígitos verificadores do CPF (CPF "matematicamente válido"): fica para depois. A parte "todos os dígitos iguais" já foi feita.
+- `[EmailAddress]` é fraco (aceita `a@b`): aceitável; confirmação real de e-mail é por link.
 - Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
 - Como o EF Core cria um `Aluno` lendo do banco? A migration não reclamou do construtor; confirmar de vez na primeira leitura do banco (Service/Postman).
 
