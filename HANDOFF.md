@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 10/11/2026
+Última atualização: 11/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`, tudo commitado e enviado. `CadastroAlunoDto` concluído; o CPF agora aceita só dígitos de 0 a 9 (DTO e entidade) e a entidade recusa CPF com todos os dígitos iguais. Próxima etapa: decidir a idade mínima e máxima do aluno.
+Branch `feature/aluno-ef-core`, tudo commitado e enviado. Sessão de 11/11 sem código: revisão das mudanças do CPF e início da regra de idade. As três perguntas da idade (mínima, máxima, origem do "hoje") estão sendo respondidas no papel.
 
 ## O que já foi feito
 
@@ -183,7 +183,7 @@ Branch `feature/aluno-ef-core`, tudo commitado e enviado. `CadastroAlunoDto` con
 - Nome de variável é substantivo (o que ela guarda, ex.: `cpfLimpo`); verbo é para método.
 - `string` é uma sequência de `char`; `char` é um caractere só, entre aspas simples (`'1'`).
 - `foreach (var x in sequencia)`: `x` é a **variável do laço**, recebe um item por volta e só existe dentro das chaves do laço.
-- `char.IsDigit(c)`: responde se o caractere é um dígito de **qualquer** alfabeto (inclui `'٣'` arábico). `char.IsAsciiDigit(c)`: só de `'0'` a `'9'`.
+- `char.IsDigit(c)`: responde se o caractere é um dígito de **qualquer** alfabeto (inclui `'٣'`, arábico-índico; os algarismos 0–9 é que são os "arábicos"). `char.IsAsciiDigit(c)`: só de `'0'` a `'9'`.
 - Guard clause dentro do `foreach`: o `throw` para tudo no primeiro item inválido; se o laço terminar, todos passaram. Texto vazio = laço com 0 voltas (não reprova nada).
 - `texto.Length`: propriedade (sem parênteses) com o número de caracteres. `!=` = "diferente de".
 - Sinal de `if` errado: o valor que deveria ser testado não aparece na condição (a resposta nunca muda). Comparar a constante com ela mesma é sempre igual.
@@ -235,14 +235,18 @@ Branch `feature/aluno-ef-core`, tudo commitado e enviado. `CadastroAlunoDto` con
 - Pré-condição: o que as verificações anteriores já garantem quando um passo roda.
 - Nome de `bool`: afirmação que leia bem no `if` (`if (digitosIguais)`).
 - Título de commit diz **o que mudou** e precisa de leitura literal ("dígitos 0 e 9" ≠ "de 0 a 9").
+- CPF com todos os dígitos iguais (`11111111111`) **passa** no cálculo dos dígitos verificadores: por isso a checagem "todos iguais" é separada e continua necessária mesmo com a validação matemática.
+- Regra na entidade, e não só no DTO, porque o DTO protege apenas a entrada pela API; job, importação ou qualquer `new Aluno(...)` passam só pela entidade. Regra que não consulta o banco não vai para o Service.
 
 ## Próximos passos
 
-1. Decidir a idade mínima e máxima do aluno (hoje só se barra data no futuro: `0001-01-01` e "ontem" passam). Se houver regra, vai na entidade, com constantes.
+1. Trazer do papel as respostas da idade: (a) idade mínima e o motivo; (b) idade máxima, e se é regra de negócio ou trava contra erro de digitação; (c) de onde vem o "hoje" dentro da entidade e que problema isso causa num teste rodado daqui a um ano. Hoje só se barra data no futuro: `0001-01-01` e "ontem" passam. Se houver regra, vai na entidade, com constantes.
 2. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
 3. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
 4. Tratamento de erros (exceção → 400), que resolve também o tamanho medido antes × depois do `Trim`.
 5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
+
+Em paralelo: revisar o projeto arquivo por arquivo (um por sessão, uns 10 min no começo), escrevendo de memória o que cada um faz e por quê e depois conferindo com as "Decisões tomadas".
 
 ## Dúvidas em aberto
 
