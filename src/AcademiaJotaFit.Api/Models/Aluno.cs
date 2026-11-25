@@ -2,14 +2,16 @@
 
 public class Aluno
 {
-    public const int AlturaMaxima = 300;
+    public const int TamanhoMinimoNome = 2;
+    public const int TamanhoMaximoNome = 100;
+    public const int IdadeMinima = 8;
+    public const int IdadeMaxima = 125;
     public const int AlturaMinima = 65;
-    public const double PesoMaximo = 600;
+    public const int AlturaMaxima = 300;
     public const double PesoMinimo = 27;
+    public const double PesoMaximo = 600;
     public const int TamanhoCpf = 11;
     public const int TamanhoMaximoEmail = 254;
-    public const int TamanhoMaximoNome = 100;
-    public const int TamanhoMinimoNome = 2;
 
     public int Id { get; private set; }
     public string NomeCompleto
@@ -43,6 +45,14 @@ public class Aluno
             {
                 throw new ArgumentOutOfRangeException(nameof(DataNascimento), $"Não pode ser maior que a data atual: {hoje}");
             }
+
+            var idade = CalcularIdade(value, hoje);
+
+            if (idade < IdadeMinima || idade > IdadeMaxima)
+            {
+                throw new ArgumentOutOfRangeException(nameof(DataNascimento), $"A idade deve estar entre {IdadeMinima} e {IdadeMaxima} anos.");
+            }
+
             field = value;
         }
     }
@@ -51,11 +61,8 @@ public class Aluno
         get
         {
             var hoje = DateOnly.FromDateTime(DateTime.Today);
-            var idade = hoje.Year - DataNascimento.Year;
-
-            if (DataNascimento.AddYears(idade) > hoje)
-                idade--;
-            return idade;
+            var idadeHoje = CalcularIdade(DataNascimento, hoje);
+            return idadeHoje;
         }
     }
     public string Email
@@ -182,5 +189,16 @@ public class Aluno
         {
             throw new ArgumentOutOfRangeException(nameof(Peso), $"O campo 'Peso' deve ter entre {PesoMinimo}kg e {PesoMaximo}kg.");
         }
+    }
+
+    private static int CalcularIdade(DateOnly dataNascimento, DateOnly hoje)
+    {
+        var idade = hoje.Year - dataNascimento.Year;
+
+        if (dataNascimento.AddYears(idade) > hoje)
+        {
+            idade--;
+        }
+        return idade;
     }
 }
