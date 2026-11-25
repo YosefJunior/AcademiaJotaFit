@@ -1,10 +1,10 @@
 # HANDOFF — Academia JotaFit
 
-Última atualização: 11/11/2026
+Última atualização: 25/11/2026
 
 ## Onde paramos
 
-Branch `feature/aluno-ef-core`, tudo commitado e enviado. Sessão de 11/11 sem código: revisão das mudanças do CPF e início da regra de idade. As três perguntas da idade (mínima, máxima, origem do "hoje") estão sendo respondidas no papel.
+Branch `feature/aluno-ef-core`, tudo commitado e enviado. A entidade `Aluno` está concluída (regra de idade no commit "Valida limite de idade do aluno"). Lógica do `Cadastrar` do Service sendo montada no papel: receber o DTO → procurar o CPF no banco → se existir, lançar exceção → criar o `Aluno` → `Add` → salvar. Faltam duas respostas: o nome do método que executa a gravação (e se ele fica no `DbSet` ou no contexto) e o que o `Cadastrar` devolve.
 
 ## O que já foi feito
 
@@ -47,6 +47,7 @@ Branch `feature/aluno-ef-core`, tudo commitado e enviado. Sessão de 11/11 sem c
 - `Peso` no DTO (`double?`, `Range` de mínimo a máximo com as constantes) e mensagens padronizadas: minúscula no meio da frase, "e-mail" igual ao da entidade, "CPF" sempre maiúsculo (commit "Conclui DTO de cadastro do Aluno").
 - CPF restrito a dígitos de 0 a 9: regex `[0-9]` no DTO e `char.IsAsciiDigit` na entidade (commit "Restringe a validação do CPF a dígitos entre 0 e 9").
 - Passo (f) no `set` do `Cpf`, depois do tamanho e antes de gravar: recusa CPF com os 11 dígitos iguais, usando uma variável `bool` `digitosIguais` e `break` (commit "Certifica que os dígitos do CPF não são todos iguais").
+- Regra de idade no `Aluno`: constantes `IdadeMinima` (8) e `IdadeMaxima` (125); cálculo extraído para `CalcularIdade(dataNascimento, hoje)` (`private static`), usado no `get` da `Idade` e no `set` da `DataNascimento`. Ordem do `set`: pega o `hoje` → barra data no futuro → calcula a idade → barra fora da faixa (um `if` com `||`, limites incluídos) → grava. Constantes reordenadas em pares mínimo/máximo (commit "Valida limite de idade do aluno").
 
 ## Decisões tomadas
 
@@ -116,6 +117,10 @@ Branch `feature/aluno-ef-core`, tudo commitado e enviado. Sessão de 11/11 sem c
 - CPF com os 11 dígitos iguais é recusado **na entidade** (regra de validade, vale em todo caminho; regex não é a ferramenta certa para "todos iguais"). Fica depois do tamanho, porque aí as verificações anteriores já garantem 11 dígitos de 0 a 9 (pré-condição), e cada erro recebe a mensagem do problema real.
 - O tamanho de nome e e-mail é medido antes do `Trim` no DTO e depois na entidade (`" A "` passa no DTO e falha na entidade → erro 500). Não se remenda no DTO: resolve-se no item 3 do roteiro (exceção → 400).
 - Uma regra por commit: cada mudança fica fácil de revisar e de desfazer.
+- Regra de idade no `set` da `DataNascimento`, não no `get` da `Idade`: a idade é derivada da data, e o `get` só roda quando alguém lê (o aluno inválido já teria sido criado).
+- Data no futuro é conferida **antes** de calcular a idade: é pré-condição, e cada erro recebe a mensagem do problema real (data de 2030 daria idade negativa e a mensagem errada).
+- Faixa de idade num `if` só com `||` e mensagem com os dois limites: mesmo padrão do nome, da altura e do peso.
+- CPF duplicado no Service é sinalizado com **exceção** (`InvalidOperationException`), não com retorno (`null`/`false`): o Controller não consegue ignorar, e no item 3 a exceção vira 409 sem mexer no Service. Não é `ArgumentException`, porque o CPF é válido, só já está em uso.
 
 ## Conceitos aprendidos
 
@@ -237,19 +242,28 @@ Branch `feature/aluno-ef-core`, tudo commitado e enviado. Sessão de 11/11 sem c
 - Título de commit diz **o que mudou** e precisa de leitura literal ("dígitos 0 e 9" ≠ "de 0 a 9").
 - CPF com todos os dígitos iguais (`11111111111`) **passa** no cálculo dos dígitos verificadores: por isso a checagem "todos iguais" é separada e continua necessária mesmo com a validação matemática.
 - Regra na entidade, e não só no DTO, porque o DTO protege apenas a entrada pela API; job, importação ou qualquer `new Aluno(...)` passam só pela entidade. Regra que não consulta o banco não vai para o Service.
+- Sinal de variável inútil: criada e nunca usada depois (`var idade` calculada e não testada); o `if` testava `value.Year` em vez da idade.
+- Limites incluídos com `<` e `>` (8 e 125 passam); `<=` e `>=` os excluiriam.
+- Onde cada regra mora: formato da entrada no **DTO**; validade do dado na **entidade**; regras que precisam consultar o banco (ex.: CPF duplicado) e a coordenação (criar, adicionar, salvar) no **Service**.
+- Chave substituta (`Id`, inventado pelo banco) × chave natural/candidata (`Cpf`, vem do mundo real). Duplicidade se evita pela chave natural, igual ao identificador externo numa integração.
+- `Add` só coloca o objeto na fila do contexto; a gravação no banco é outro passo.
+- Sinalizar falha: retorno (quem chama precisa lembrar de conferir) × exceção (não dá para ignorar). Não fazer nada é "mentira silenciosa".
 
 ## Próximos passos
 
-1. Trazer do papel as respostas da idade: (a) idade mínima e o motivo; (b) idade máxima, e se é regra de negócio ou trava contra erro de digitação; (c) de onde vem o "hoje" dentro da entidade e que problema isso causa num teste rodado daqui a um ano. Hoje só se barra data no futuro: `0001-01-01` e "ontem" passam. Se houver regra, vai na entidade, com constantes.
-2. Decidir se os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, agora que a API só aceita CPF sem máscara.
-3. Service do Aluno (cadastrar com checagem de CPF duplicado → 409), Controller e testes no Postman.
-4. Tratamento de erros (exceção → 400), que resolve também o tamanho medido antes × depois do `Trim`.
-5. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
+1. Fechar no papel a lógica do `Cadastrar`: pesquisar o método do EF Core que executa a gravação (e se é do `DbSet` ou do contexto) e decidir o que o `Cadastrar` devolve para o Controller. Depois, traduzir para código (Service recebe o `JotaFitContext` por injeção de dependência e é registrado no `Program.cs`).
+2. `BuscarPorId` no Service.
+3. Controller do Aluno: `POST` de cadastro e `GET` por id; testar no Postman (cadastrar, buscar, CPF repetido → hoje 500).
+4. Abrir PR da `feature/aluno-ef-core` para a `main` quando o Aluno funcionar de ponta a ponta.
+5. Tratamento de erros (exceção → 400/404/409), que resolve também o tamanho medido antes × depois do `Trim`.
 
 Em paralelo: revisar o projeto arquivo por arquivo (um por sessão, uns 10 min no começo), escrevendo de memória o que cada um faz e por quê e depois conferindo com as "Decisões tomadas".
 
 ## Dúvidas em aberto
 
+- O "hoje" vem de `DateTime.Today` dentro da entidade: um teste rodado em outra data muda de resultado. Ver quando chegar em testes.
+- Os `Replace` de ponto, traço e espaço continuam no `set` do `Cpf`, mesmo com a API aceitando só CPF sem máscara? Decidir.
+- Nascido em 29/02: em ano não bissexto o `AddYears` cai em 28/02, então a idade sobe um dia antes. Aceitável por enquanto.
 - Validar os dígitos verificadores do CPF (CPF "matematicamente válido"): fica para depois. A parte "todos os dígitos iguais" já foi feita.
 - `[EmailAddress]` é fraco (aceita `a@b`): aceitável; confirmação real de e-mail é por link.
 - Busca por nome com e sem acento: ver quando chegar no banco (collation do SQL Server).
