@@ -1,4 +1,5 @@
 using AcademiaJotaFit.Api.Data;
+using AcademiaJotaFit.Api.Services;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -10,6 +11,8 @@ builder.Services.AddControllers();
 var connectionString = builder.Configuration.GetConnectionString("JotaFit");
 
 builder.Services.AddDbContext<JotaFitContext>(options => options.UseSqlServer(connectionString));
+
+builder.Services.AddScoped<AlunoService>();
 
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
